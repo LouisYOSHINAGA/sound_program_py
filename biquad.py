@@ -7,7 +7,7 @@ import numpy as np
     fc' := tan(pi fc / sr) / (2 pi)
         = tan(omega/2) / (2 pi)
 
-    den := 1 + 2 pi fc' / Q + 4 pi^2 fc'^2
+    den := 1 + 2 pi fc' / Q + (2 pi fc')^2
         = 1 + tan(omega/2) / Q + tan^2(omega/2)
            cos^2(omega/2) + sin(omega/2) cos(omega/2) / Q + sin^2(omega/2)
         = -----------------------------------------------------------------
@@ -39,7 +39,7 @@ import numpy as np
          = ----------------
             1 + cos(omega)
 
-    num2 := 4 pi^2 fc'^2
+    num2 := (2 pi fc')^2
          = tan^2(omega/2)
          = 1 / cos^2(omega/2) - 1
                   2
@@ -52,12 +52,12 @@ import numpy as np
 
 def lpf_coef (fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
     """
-        a[0] := 1 + 2 pi fc' / Q + 4 pi^2 fc'^2
+        a[0] := 1 + 2 pi fc' / Q + (2 pi fc')^2
              = den
         a[0]' = a[0] / a[0]
               = 1
 
-        a[1] := 8 pi^2 fc^2 - 2
+        a[1] := 2 (2 pi fc)^2 - 2
              = 2 num2 - 2
                 2 (1 - cos(omega))     2 (1 + cos(omega))
              = -------------------- - --------------------
@@ -71,7 +71,7 @@ def lpf_coef (fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
                  1 + cos(omega)     2 (1 + alpha)
               = -2 cos(omega) / (1 + alpha)
 
-        a[2] := 1 - 2 pi fc' / Q + 4 pi^2 fc'^2
+        a[2] := 1 - 2 pi fc' / Q + (2 pi fc')^2
              = 1 - num1 + num2
                 1 + cos(omega)        2 alpha         1 - cos(omega)
              = ---------------- - ---------------- + ----------------
@@ -87,7 +87,7 @@ def lpf_coef (fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
               = -----------
                  1 + alpha
 
-        b[0] := 4 pi^2 fc'2
+        b[0] := (2 pi fc')^2
              = num2
         b[0]' = b[0] / a[0]
                  1 - cos(omega)     1 + cos(omega)
@@ -97,19 +97,21 @@ def lpf_coef (fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
               = ----------------
                  2 (1 + alpha)
 
-        b[1] := 8 pi^2 fc'^2
+        b[1] := 2 (2 pi fc')^2
              = 2 num2
              = 2 b[0]
         b[1]' = b[1] / a[0]
+              = 2 b[0] / a[0]
               = 2 b[0]'
                  1 - cos(omega)
               = ----------------
                    1 + alpha
 
-        b[2] := 4 pi^2 fc^2
+        b[2] := (2 pi fc')^2
              = num2
              = b[0]
         b[2]' = b[2] / a[0]
+              = b[0] / a[0]
               = b[0]'
                  1 - cos(omega)
               = ----------------
@@ -124,6 +126,244 @@ def lpf_coef (fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
     b[0] = (2 * np.pi * fc)**2
     b[1] = 2 * (2 * np.pi * fc)**2
     b[2] = (2 * np.pi * fc)**2
+    b /= a[0]
+    a /= a[0]
+    return a, b
+
+def hpf_coef(fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+    """
+        a[0] := 1 + 2 pi fc' / Q + (2 pi fc')^2
+             = den
+        a[0]' = a[0] / a[0]
+              = 1
+
+        a[1] := 2 (2 pi fc')^2 - 2
+             = 2 num2 - 2
+                2 (1 - cos(omega))     2 (1 + cos(omega))
+             = -------------------- - --------------------
+                  1 + cos(omega)         1 + cos(omega)
+                - 4 cos(omega)
+             = ----------------
+                1 + cos(omega)
+        a[1]' = a[1] / a[0]
+                 - 4 cos(omega)     1 + cos(omega)
+              = ---------------- x ----------------
+                 1 + cos(omega)     2 (1 + alpha)
+              = -2 cos(omega) / (1 + alpha)
+
+        a[2] := 1 - 2 pi fc' / Q + (2 pi fc')^2
+             = 1 - num1 + num2
+                1 + cos(omega)        2 alpha         1 - cos(omega)
+             = ---------------- - ---------------- + ----------------
+                1 + cos(omega)     1 + cos(omega)     1 + cos(omega)
+                 2 - 2 alpha
+             = ----------------
+                1 + cos(omega)
+        a[2]' = a[2] / a[0]
+                  2 - 2 alpha       1 + cos(omega)
+              = ---------------- x ----------------
+                 1 + cos(omega)     2 (1 + alpha)
+                 1 - alpha
+              = -----------
+                 1 + alpha
+
+        b[0] := 1
+        b[0]' = b[0] / a[0]
+                 1 + cos(omega)
+              = ----------------
+                 2 (1 + alpha)
+
+        b[1] := -2
+        b[1]' = b[1] / a[0]
+              = -2 b[0] / a[0]
+              = -2 b[0]'
+                   1 + cos(omega)
+              = - ----------------
+                     1 + alpha
+
+        b[2] := 1
+        b[2]' = b[2] / a[0]
+              = b[0] / a[0]
+              = b[0]'
+                 1 + cos(omega)
+              = ----------------
+                 2 (1 + alpha)
+    """
+    fc = np.tan(np.pi * fc / sr) / (2 * np.pi)
+    a: np.ndarray = np.zeros(3)
+    a[0] = 1 + 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
+    a[1] = 2 * (2 * np.pi * fc)**2 - 2
+    a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
+    b: np.ndarray = np.zeros(3)
+    b[0] = 1
+    b[1] = -2
+    b[2] = 1
+    b /= a[0]
+    a /= a[0]
+    return a, b
+
+def bpf_coef(fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+    """
+        a[0] := 1 + 2 pi fc' / Q + (2 pi fc')^2
+             = den
+        a[0]' = a[0] / a[0]
+              = 1
+
+        a[1] := 2 (2 pi fc')^2 - 2
+             = 2 num2 - 2
+                2 (1 - cos(omega))     2 (1 + cos(omega))
+             = -------------------- - --------------------
+                  1 + cos(omega)         1 + cos(omega)
+                - 4 cos(omega)
+             = ----------------
+                1 + cos(omega)
+        a[1]' = a[1] / a[0]
+                 - 4 cos(omega)     1 + cos(omega)
+              = ---------------- x ----------------
+                 1 + cos(omega)     2 (1 + alpha)
+              = -2 cos(omega) / (1 + alpha)
+
+        a[2] := 1 - 2 pi fc' / Q + (2 pi fc')^2
+             = 1 - num1 + num2
+                1 + cos(omega)        2 alpha         1 - cos(omega)
+             = ---------------- - ---------------- + ----------------
+                1 + cos(omega)     1 + cos(omega)     1 + cos(omega)
+                 2 - 2 alpha
+             = ----------------
+                1 + cos(omega)
+        a[2]' = a[2] / a[0]
+                  2 - 2 alpha       1 + cos(omega)
+              = ---------------- x ----------------
+                 1 + cos(omega)     2 (1 + alpha)
+                 1 - alpha
+              = -----------
+                 1 + alpha
+
+        b[0] := 2 pi fc' / Q
+             = num1
+        b[0]' = b[0] / a[0]
+                    2 alpha         1 + cos(omega)
+              = ---------------- x ----------------
+                 1 + cos(omega)     2 (1 + alpha)
+                   alpha
+              = -----------
+                 1 + alpha
+
+        b[1] := 0
+        b[1]' = b[1] / a[0]
+              = 0
+
+        b[2] := - 2 pi fc' / Q
+             = - num1
+             = - b[0]
+        b[2]' = b[2] / a[0]
+              = b[0] / a[0]
+              = - b[0]'
+                     alpha
+              = - -----------
+                   1 + alpha
+   """
+    fc = np.tan(np.pi * fc / sr) / (2 * np.pi)
+    a: np.ndarray = np.zeros(3)
+    a[0] = 1 + 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
+    a[1] = 2 * (2 * np.pi * fc)**2 - 2
+    a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
+    b: np.ndarray = np.zeros(3)
+    b[0] = 2 * np.pi * fc / Q
+    b[1] = 0
+    b[2] = - 2 * np.pi * fc / Q
+    b /= a[0]
+    a /= a[0]
+    return a, b
+
+def bef_coef(fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+    """
+        a[0] := 1 + 2 pi fc' / Q + (2 pi fc')^2
+             = den
+        a[0]' = a[0] / a[0]
+              = 1
+
+        a[1] := 2 (2 pi fc')^2 - 2
+             = 2 num2 - 2
+                2 (1 - cos(omega))     2 (1 + cos(omega))
+             = -------------------- - --------------------
+                  1 + cos(omega)         1 + cos(omega)
+                - 4 cos(omega)
+             = ----------------
+                1 + cos(omega)
+        a[1]' = a[1] / a[0]
+                 - 4 cos(omega)     1 + cos(omega)
+              = ---------------- x ----------------
+                 1 + cos(omega)     2 (1 + alpha)
+              = -2 cos(omega) / (1 + alpha)
+
+        a[2] := 1 - 2 pi fc' / Q + (2 pi fc')^2
+             = 1 - num1 + num2
+                1 + cos(omega)        2 alpha         1 - cos(omega)
+             = ---------------- - ---------------- + ----------------
+                1 + cos(omega)     1 + cos(omega)     1 + cos(omega)
+                 2 - 2 alpha
+             = ----------------
+                1 + cos(omega)
+        a[2]' = a[2] / a[0]
+                  2 - 2 alpha       1 + cos(omega)
+              = ---------------- x ----------------
+                 1 + cos(omega)     2 (1 + alpha)
+                 1 - alpha
+              = -----------
+                 1 + alpha
+
+        b[0] := (2 pi fc')^2 + 1
+             = num2 + 1
+                1 - cos(omega)     1 + cos(omega)
+             = ---------------- + ----------------
+                1 + cos(omega)     1 + cos(omega)
+                     2
+            = ----------------
+               1 + cos(omega)
+        b[0]' = b[0] / a[0]
+                       2            1 + cos(omega)
+              = ---------------- x ----------------
+                 1 + cos(omega)     2 (1 + alpha)
+                     1
+              = -----------
+                 1 + alpha
+
+        b[1] := 2 (2 pi fc')^2 - 2
+             = 2 num2 - 2
+                2 (1 - cos(omega))     2 (1 + cos(omega))
+             = -------------------- - --------------------
+                  1 + cos(omega)         1 + cos(omega)
+                - 4 cos(omega)
+             = ----------------
+                1 + cos(omega)
+        b[1]' = b[1] / a[0]
+                 - 4 cos(omega)     1 + cos(omega)
+              = ---------------- x ----------------
+                 1 + cos(omega)     2 (1 + alpha)
+                 - 2 cos(omega)
+              = ----------------
+                   1 + alpha
+
+        b[2] := (2 pi fc')^2 + 1
+             = num2 + 1
+             = b[0]
+        b[2]' = b[2] / a[0]
+              = b[0] / a[0]
+              = b[0]'
+                     1
+              = -----------
+                 1 + alpha
+    """
+    fc = np.tan(np.pi * fc / sr) / (2 * np.pi)
+    a: np.ndarray = np.zeros(3)
+    a[0] = 1 + 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
+    a[1] = 2 * (2 * np.pi * fc)**2 - 2
+    a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
+    b: np.ndarray = np.zeros(3)
+    b[0] = (2 * np.pi * fc)**2 + 1
+    b[1] = 2 * (2 * np.pi * fc)**2 - 2
+    b[2] = (2 * np.pi * fc)**2 + 1
     b /= a[0]
     a /= a[0]
     return a, b
