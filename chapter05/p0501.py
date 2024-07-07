@@ -18,7 +18,7 @@ def plot_mono_wave(ts: np.ndarray, data: np.ndarray, sr: int, valid_sec: float, 
     plt.savefig(title, dpi=320)
     plt.show()
 
-def plot_spectrogram(fs: np.ndarray, amp_spec: np.ndarray, valid_freq: float, title: str) -> None:
+def plot_spectrum(fs: np.ndarray, amp_spec: np.ndarray, valid_freq: float, title: str) -> None:
     assert len(amp_spec.shape) == 1 and fs.shape == amp_spec.shape
     assert valid_freq <= fs[-1]
     plt.figure(figsize=(12, 4))
@@ -42,4 +42,4 @@ if __name__ == "__main__":
     abs_X: np.ndarray = np.abs(X)
 
     fs: np.ndarray = sr * np.arange(N) / N
-    plot_spectrogram(fs, abs_X, valid_freq=4000, title="p0501_freq.png")
+    plot_spectrum(fs, abs_X, valid_freq=4000, title="p0501_freq.png")
