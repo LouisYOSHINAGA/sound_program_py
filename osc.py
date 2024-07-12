@@ -10,6 +10,7 @@ def sine(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:
     fsts: np.ndarray = np.cunsum(fs) / sr
     return np.sin(2 * np.pi * fsts)
 
+
 def sawtooth(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:
     if isinstance(fs, int):
         fs = float(fs)
@@ -17,7 +18,13 @@ def sawtooth(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray
         assert sec is not None
         fs = np.full(int(sec*sr), fs)
     fsts: np.ndarray = np.cumsum(fs) / sr % 1
-    print(fsts)
     ys: np.ndarray = -2 * fsts + 1
-    # TODO: impl Poly BLEP
-    return ys
+
+    # TODO: debug
+    ds: np.ndarray = np.zeros(len(ys))
+    is_period_end: np.ndarray = fsts[1:] - fsts[:-1] < 0
+    is_period_end = np.append(is_period_end, False)
+    ds[is_period_end] = ((fsts[is_period_end] - 1) + 1)**2
+    is_period_start: np.ndarray = np.roll(is_period_end, 1)
+    ds[is_period_start] = - (fsts[is_period_start] - 1)**2
+    return ys + ds
