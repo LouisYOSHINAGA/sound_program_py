@@ -375,9 +375,37 @@ def lsf_coef(fc: float, Q: float, g: float, sr: int) -> tuple[np.ndarray, np.nda
     a[1] = 2 * (2 * np.pi * fc)**2 - 2
     a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
     b: np.ndarray = np.zeros(3)
-    b[0] = 1 + 2 * np.pi * fc / Q + np.sqrt(1 + g) + (2 * np.pi * fc)**2 * (1 + g)
+    b[0] = 1 + 2 * np.pi * fc / Q * np.sqrt(1 + g) + (2 * np.pi * fc)**2 * (1 + g)
     b[1] = 2 * (2 * np.pi * fc) * (1 + g) - 2
     b[2] = 1 - 2 * np.pi * fc / Q * np.sqrt(1 + g) + (2 * np.pi * fc)**2 * (1 + g)
+    b /= a[0]
+    a /= a[0]
+    return a, b
+
+def hsf_coef(fc: float, Q: float, g: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+    fc = np.tan(np.pi * fc / sr) / (2 * np.pi)
+    a: np.ndarray = np.zeros(3)
+    a[0] = 1 + 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
+    a[1] = 2 * (2 * np.pi * fc)**2 - 2
+    a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
+    b: np.ndarray = np.zeros(3)
+    b[0] = 1 + g + 2 * np.pi * fc / Q * np.sqrt(1 + g) + (2 * np.pi * fc)**2
+    b[1] = 2 * (2 * np.pi * fc)**2 - 2 * (1 + g)
+    b[2] = 1 + g - 2 * np.pi * fc / Q * np.sqrt(1 + g) + (2 * np.pi * fc)**2
+    b /= a[0]
+    a /= a[0]
+    return a, b
+
+def pf_coef(fc: float, Q: float, g: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+    fc = np.tan(np.pi * fc / sr) / (2 * np.pi)
+    a: np.ndarray = np.zeros(3)
+    a[0] = 1 + 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
+    a[1] = 2 * (2 * np.pi * fc)**2 - 2
+    a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
+    b: np.ndarray = np.zeros(3)
+    b[0] = 1 + 2 * np.pi * fc / Q * (1 + g) + (2 * np.pi * fc)**2
+    b[1] = 2 * (2 * np.pi * fc)**2 - 2
+    b[2] = 1 - 2 * np.pi * fc / Q * (1 + g) + (2 * np.pi * fc)**2
     b /= a[0]
     a /= a[0]
     return a, b
