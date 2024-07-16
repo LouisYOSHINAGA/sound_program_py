@@ -28,3 +28,17 @@ def sawtooth(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray
     is_period_start: np.ndarray = np.roll(is_period_end, 1)
     ds[is_period_start] = - (fsts[is_period_start] - 1)**2
     return ys + ds
+
+
+def square(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:
+    if isinstance(fs, int):
+        fs = float(fs)
+    if isinstance(fs, float):
+        assert sec is not None
+        fs = np.full(int(sec*sr), fs)
+    fsts: np.ndarray = np.cumsum(fs) / sr % 1
+    ys: np.ndarray = np.zeros(fsts.shape)
+    ys[fsts < 0.5] = 1
+    ys[fsts >= 0.5] = -1
+    # TODO Ploy BLEP
+    return ys
