@@ -6,7 +6,7 @@ from wavio import write_wave_16bit
 
 
 if __name__ == "__main__":
-    for name, func in {'sin': sine, 'saw': sawtooth, 'sq': square}.items():
+    for name, func in {'sin': sine, 'saw': sawtooth, 'sq': square, 'white': white_noise}.items():
         sr: int = 44100
         sec: float = 1.0
 

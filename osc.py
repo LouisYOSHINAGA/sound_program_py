@@ -1,4 +1,6 @@
 import numpy as np
+from typing import Any
+
 
 def sine(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:
     if isinstance(fs, float):
@@ -50,3 +52,9 @@ def square(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:
     is_after_jump: np.ndarray = np.roll(is_before_jump, 1)
     ds[is_after_jump] = ((phases[is_after_jump] - 0.5)*sr/fs[is_before_jump] - 1)**2
     return ys + ds
+
+
+def white_noise(sr: int, sec: float, fs: Any) -> np.ndarray:
+    ys: np.ndarray = 2 * np.random.rand(int(sec*sr)) - 1
+    assert np.all(-1 <= ys) and np.all(ys <= 1)
+    return ys
