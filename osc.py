@@ -3,16 +3,15 @@ from typing import Any
 
 
 def sine(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:
-    if isinstance(fs, float):
+    if isinstance(fs, (int, float)):
         assert sec is not None
-        return np.sin(2 * np.pi * fs * np.arange(0, sec, 1/sr))
-
+        fs = np.full(int(sec*sr), fs)
     assert isinstance(fs, np.ndarray)
-    fsts: np.ndarray = np.cunsum(fs) / sr
-    return np.sin(2 * np.pi * fsts)
+    phases: np.ndarray = np.cumsum(fs, axis=0) / sr
+    return np.sin(2 * np.pi * phases)
 
 
-def sawtooth(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:
+def sawtooth(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:  # TODO: multi dim ndarray
     if isinstance(fs, (int, float)):
         assert sec is not None
         fs = np.full(int(sec*sr), fs)
@@ -30,7 +29,7 @@ def sawtooth(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray
     return ys + ds
 
 
-def square(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:
+def square(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:  # TODO: multi dim ndarray
     if isinstance(fs, (int, float)):
         assert sec is not None
         fs = np.full(int(sec*sr), fs)
@@ -54,7 +53,7 @@ def square(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:
     return ys + ds
 
 
-def white_noise(sr: int, sec: float, fs: Any) -> np.ndarray:
+def white_noise(sr: int, sec: float, fs: Any) -> np.ndarray:  # TODO: multi dim ndarray
     ys: np.ndarray = 2 * np.random.rand(int(sec*sr)) - 1
     assert np.all(-1 <= ys) and np.all(ys <= 1)
     return ys
