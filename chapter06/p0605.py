@@ -27,7 +27,7 @@ if __name__ == "__main__":
     sec_gate: float = 1.0
     sec: float = 2.0
 
-    env: np.ndarray = adsr(sec_A, sec_D, sec_gate, amp_S, sec_R, sec, sr)
+    env: np.ndarray = adsr(sec_A, sec_D, amp_S, sec_R, sec_gate, sec, sr)
     env[:int(sec*sr)] = offset + depth * env[:int(sec*sr)]
 
     plot_envepole(env, title="p0605_adsr.png")

@@ -1,13 +1,13 @@
 import numpy as np
 
 
-def adsr(sec_A: float, sec_D: float, sec_gate: float, amp_S: float, sec_R: float,
-         sec: float, sr: int =44100) -> np.ndarray:
+def adsr(sec_A: float, sec_D: float, amp_S: float, sec_R: float,
+         sec_gate: float, dur: float, sr: int =44100) -> np.ndarray:  # TODO: multi dim ndarray
     sample_A: int = int(sec_A * sr)
     sample_D: int = int(sec_D * sr)
     sample_gate: int = int(sec_gate * sr)
     sample_R: int = int(sec_R * sr)
-    sample: int = int(sec * sr)
+    sample: int = int(dur* sr)
 
     env: np.ndarray = np.empty(sample)
     env[0:sample_A] = (1 - np.exp(-5 * np.arange(sample_A) / sample_A)) / (1 - np.exp(-5))
