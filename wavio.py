@@ -8,7 +8,7 @@ def read_wave_16bit(filename: str, is_mono: bool =False) -> tuple[np.ndarray, in
     assert (len(data.shape) == 1 and is_mono) or (len(data.shape) == 2 and not is_mono)
     assert np.all(-32768 <= data) and np.all(data <= 32767)
 
-    data = 2 * (data + 32768) / 65535 - 1
+    data = 2 * (data + 32768) / 65536 - 1
     assert np.all(-1 <= data) and np.all(data <= 1)
     return data, sr
 
