@@ -7,7 +7,8 @@ def sine(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:
         assert sec is not None
         fs = np.full(int(sec*sr), fs)
     assert isinstance(fs, np.ndarray)
-    phases: np.ndarray = np.cumsum(np.concatenate([[0], fs[:-1]/sr]), axis=0) % 1
+    dim: int|tuple[int, int] = 1 if len(fs.shape) == 1 else (fs.shape[0], 1)
+    phases: np.ndarray = np.cumsum(np.concatenate([np.zeros(dim), fs[..., :-1]/sr], axis=-1), axis=-1) % 1
     return np.sin(2 * np.pi * phases)
 
 
