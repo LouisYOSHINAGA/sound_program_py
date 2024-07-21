@@ -20,14 +20,14 @@ if __name__ == "__main__":
     sr: int = 44100
     offset: float = 0.0
     depth: float = 1.0
-    sec_A: float = 0.1
-    sec_D: float = 0.4
-    amp_S: float = 0.5
-    sec_R: float = 0.4
-    sec_gate: float = 1.0
+    A: float = 0.1
+    D: float = 0.4
+    S: float = 0.5
+    R: float = 0.4
+    gate: float = 1.0
     sec: float = 2.0
 
-    env: np.ndarray = adsr(sec_A, sec_D, amp_S, sec_R, sec_gate, sec, sr)
+    env: np.ndarray = adsr(A=A, D=D, S=S, R=R, gate=gate, dur=sec, sr=sr)
     env[:int(sec*sr)] = offset + depth * env[:int(sec*sr)]
 
     plot_envepole(env, title="p0605_adsr.png")
