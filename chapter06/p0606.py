@@ -1,6 +1,7 @@
 import sys
 sys.path.append("..")
 import numpy as np
+import inspect
 from osc import sine
 from env import adsr
 from wavio import write_wave_16bit
@@ -20,18 +21,15 @@ if __name__ == "__main__":
     ]
 
     vcos: np.ndarray = np.empty((len(partial_params), int(sec*sr)))
-    for i, partial_param in enumerate(partial_params):
-        p: dict[str, float] = partial_param['vco']
-        vcos[i] = p['offset'] + p['depth'] * adsr(A=p['A'], D=p['D'], S=p['S'], R=p['R'], gate=p['gate'], dur=p['dur'], sr=sr)
-    ys: np.ndarray = sine(fs=vcos, sr=sr)
-
     vcas: np.ndarray = np.empty((len(partial_params), int(sec*sr)))
     for i, partial_param in enumerate(partial_params):
-        p: dict[str, float] = partial_param['vca']
-        vcas[i] = p['offset'] + p['depth'] * adsr(A=p['A'], D=p['D'], S=p['S'], R=p['R'], gate=p['gate'], dur=p['dur'], sr=sr)
-    ys *= vcas
-
-    y: np.ndarray = np.mean(ys, axis=0)
+        po: dict[str, float] = partial_param['vco']
+        vcos[i] = po['offset'] + po['depth'] * adsr(**{k: v for k, v in po.items()
+                                                    if k in inspect.signature(adsr).parameters.keys()})
+        pa: dict[str, float] = partial_param['vca']
+        vcas[i] = pa['offset'] + pa['depth'] * adsr(**{k: v for k, v in pa.items()
+                                                    if k in inspect.signature(adsr).parameters.keys()})
+    y: np.ndarray = np.mean(vcas * sine(fs=vcos, sr=sr), axis=0)
 
     blank: float = 1.0
     vol: float = 0.5

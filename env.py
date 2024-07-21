@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def adsr(A: float, D: float, S: float, R: float, gate: float, dur: float, alpha: float =-5.0, sr: int =44100) -> np.ndarray:  # TODO: multi dim ndarray
+def adsr(A: float, D: float, S: float, R: float, gate: float, dur: float, alpha: float =-5.0, sr: int =44100) -> np.ndarray:
     sample_A: int = int(A * sr)
     sample_D: int = int(D * sr)
     sample_gate: int = int(gate * sr)
