@@ -2,8 +2,8 @@ import sys
 sys.path.append("..")
 import numpy as np
 import inspect
-from osc import sine
 from env import adsr
+from osc import sine
 from wavio import write_wave_16bit
 
 
@@ -29,6 +29,7 @@ if __name__ == "__main__":
         pa: dict[str, float] = partial_param['vca']
         vcas[i] = pa['offset'] + pa['depth'] * adsr(**{k: v for k, v in pa.items()
                                                     if k in inspect.signature(adsr).parameters.keys()})
+    from osc import *
     y: np.ndarray = np.mean(vcas * sine(fs=vcos, sr=sr), axis=0)
 
     blank: float = 1.0
