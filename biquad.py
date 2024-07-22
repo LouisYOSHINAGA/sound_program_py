@@ -409,3 +409,24 @@ def pf_coef(fc: float, Q: float, g: float, sr: int) -> tuple[np.ndarray, np.ndar
     b /= a[0]
     a /= a[0]
     return a, b
+
+
+def biquad_filter(data: np.ndarray, coefs: tuple[np.ndarray, np.ndarray]) -> np.ndarray:
+    a, b = coefs
+
+    dim: int|tuple[int, int] = 1 if len(data.shape) == 1 else (data.shape, 1)
+    z1: np.ndarray = np.concatenate([np.zeros(dim), data[..., :-1]], axis=-1)
+    dim = 2 if len(data.shape) == 1 else (data.shape, 2)
+    z2: np.ndarray = np.concatenate([np.zeros(dim), data[..., :-2]], axis=-1)
+    assert z1.shape == data.shape and z2.shape == data.shape
+
+    mid_data: np.ndarray = b[0] * data + b[1] * z1 + b[2] * z2
+    assert mid_data.shape == data.shape
+
+    lpf_data: np.ndarray = np.concatenate([
+        np.array([mid_data[..., 0], mid_data[..., 1] - a[1] * mid_data[..., 0]]),
+        np.zeros(mid_data.shape[-1] - dim)
+    ])
+    for i in range(2, lpf_data.shape[-1]):
+        lpf_data[..., i] = mid_data[..., i] - a[1] * lpf_data[..., i-1] - a[2] * lpf_data[..., i-2]
+    return lpf_data
