@@ -50,7 +50,7 @@ import numpy as np
             1 + cos(omega)
 """
 
-def lpf_coef (fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+def lpf_coef (fc: float|np.ndarray, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
     """
         a[0] := 1 + 2 pi fc' / Q + (2 pi fc')^2
              = den
@@ -117,12 +117,13 @@ def lpf_coef (fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
               = ----------------
                  2 (1 + alpha)
     """
+    assert isinstance(fc, (int, float)) or len(fc.shape) == 1
     fc = np.tan(np.pi * fc / sr) / (2 * np.pi)
-    a: np.ndarray = np.zeros(3)
+    a: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     a[0] = 1 + 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
     a[1] = 2 * (2 * np.pi * fc)**2 - 2
     a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
-    b: np.ndarray = np.zeros(3)
+    b: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     b[0] = (2 * np.pi * fc)**2
     b[1] = 2 * (2 * np.pi * fc)**2
     b[2] = (2 * np.pi * fc)**2
@@ -130,7 +131,7 @@ def lpf_coef (fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
     a /= a[0]
     return a, b
 
-def hpf_coef(fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+def hpf_coef(fc: float|np.ndarray, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
     """
         a[0] := 1 + 2 pi fc' / Q + (2 pi fc')^2
              = den
@@ -189,12 +190,13 @@ def hpf_coef(fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
               = ----------------
                  2 (1 + alpha)
     """
+    assert isinstance(fc, (int, float)) or len(fc.shape) == 1
     fc = np.tan(np.pi * fc / sr) / (2 * np.pi)
-    a: np.ndarray = np.zeros(3)
+    a: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     a[0] = 1 + 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
     a[1] = 2 * (2 * np.pi * fc)**2 - 2
     a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
-    b: np.ndarray = np.zeros(3)
+    b: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     b[0] = 1
     b[1] = -2
     b[2] = 1
@@ -202,7 +204,7 @@ def hpf_coef(fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
     a /= a[0]
     return a, b
 
-def bpf_coef(fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+def bpf_coef(fc: float|np.ndarray, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
     """
         a[0] := 1 + 2 pi fc' / Q + (2 pi fc')^2
              = den
@@ -263,12 +265,13 @@ def bpf_coef(fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
               = - -----------
                    1 + alpha
    """
+    assert isinstance(fc, (int, float)) or len(fc.shape) == 1
     fc = np.tan(np.pi * fc / sr) / (2 * np.pi)
-    a: np.ndarray = np.zeros(3)
+    a: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     a[0] = 1 + 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
     a[1] = 2 * (2 * np.pi * fc)**2 - 2
     a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
-    b: np.ndarray = np.zeros(3)
+    b: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     b[0] = 2 * np.pi * fc / Q
     b[1] = 0
     b[2] = - 2 * np.pi * fc / Q
@@ -276,7 +279,7 @@ def bpf_coef(fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
     a /= a[0]
     return a, b
 
-def bef_coef(fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+def bef_coef(fc: float|np.ndarray, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
     """
         a[0] := 1 + 2 pi fc' / Q + (2 pi fc')^2
              = den
@@ -355,12 +358,13 @@ def bef_coef(fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
               = -----------
                  1 + alpha
     """
+    assert isinstance(fc, (int, float)) or len(fc.shape) == 1
     fc = np.tan(np.pi * fc / sr) / (2 * np.pi)
-    a: np.ndarray = np.zeros(3)
+    a: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     a[0] = 1 + 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
     a[1] = 2 * (2 * np.pi * fc)**2 - 2
     a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
-    b: np.ndarray = np.zeros(3)
+    b: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     b[0] = (2 * np.pi * fc)**2 + 1
     b[1] = 2 * (2 * np.pi * fc)**2 - 2
     b[2] = (2 * np.pi * fc)**2 + 1
@@ -368,13 +372,14 @@ def bef_coef(fc: float, Q: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
     a /= a[0]
     return a, b
 
-def lsf_coef(fc: float, Q: float, g: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+def lsf_coef(fc: float|np.ndarray, Q: float, g: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+    assert isinstance(fc, (int, float)) or len(fc.shape) == 1
     fc = np.tan(np.pi * fc / sr) / (2 * np.pi)
-    a: np.ndarray = np.zeros(3)
+    a: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     a[0] = 1 + 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
     a[1] = 2 * (2 * np.pi * fc)**2 - 2
     a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
-    b: np.ndarray = np.zeros(3)
+    b: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     b[0] = 1 + 2 * np.pi * fc / Q * np.sqrt(1 + g) + (2 * np.pi * fc)**2 * (1 + g)
     b[1] = 2 * (2 * np.pi * fc) * (1 + g) - 2
     b[2] = 1 - 2 * np.pi * fc / Q * np.sqrt(1 + g) + (2 * np.pi * fc)**2 * (1 + g)
@@ -382,13 +387,14 @@ def lsf_coef(fc: float, Q: float, g: float, sr: int) -> tuple[np.ndarray, np.nda
     a /= a[0]
     return a, b
 
-def hsf_coef(fc: float, Q: float, g: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+def hsf_coef(fc: float|np.ndarray, Q: float, g: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+    assert isinstance(fc, (int, float)) or len(fc.shape) == 1
     fc = np.tan(np.pi * fc / sr) / (2 * np.pi)
-    a: np.ndarray = np.zeros(3)
+    a: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     a[0] = 1 + 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
     a[1] = 2 * (2 * np.pi * fc)**2 - 2
     a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
-    b: np.ndarray = np.zeros(3)
+    b: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     b[0] = 1 + g + 2 * np.pi * fc / Q * np.sqrt(1 + g) + (2 * np.pi * fc)**2
     b[1] = 2 * (2 * np.pi * fc)**2 - 2 * (1 + g)
     b[2] = 1 + g - 2 * np.pi * fc / Q * np.sqrt(1 + g) + (2 * np.pi * fc)**2
@@ -396,13 +402,14 @@ def hsf_coef(fc: float, Q: float, g: float, sr: int) -> tuple[np.ndarray, np.nda
     a /= a[0]
     return a, b
 
-def pf_coef(fc: float, Q: float, g: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+def pf_coef(fc: float|np.ndarray, Q: float, g: float, sr: int) -> tuple[np.ndarray, np.ndarray]:
+    assert isinstance(fc, (int, float)) or len(fc.shape) == 1
     fc = np.tan(np.pi * fc / sr) / (2 * np.pi)
-    a: np.ndarray = np.zeros(3)
+    a: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     a[0] = 1 + 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
     a[1] = 2 * (2 * np.pi * fc)**2 - 2
     a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
-    b: np.ndarray = np.zeros(3)
+    b: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     b[0] = 1 + 2 * np.pi * fc / Q * (1 + g) + (2 * np.pi * fc)**2
     b[1] = 2 * (2 * np.pi * fc)**2 - 2
     b[2] = 1 - 2 * np.pi * fc / Q * (1 + g) + (2 * np.pi * fc)**2
@@ -413,20 +420,21 @@ def pf_coef(fc: float, Q: float, g: float, sr: int) -> tuple[np.ndarray, np.ndar
 
 def biquad_filter(data: np.ndarray, coefs: tuple[np.ndarray, np.ndarray]) -> np.ndarray:
     a, b = coefs
+    if len(a.shape) == 1:
+      a = np.repeat(a[:, np.newaxis], len(data), axis=1)
+    assert len(data.shape) == 1 and a.shape == (3, len(data)) and b.shape == (3, ) or b.shape == (3, len(data))
 
-    dim: int|tuple[int, int] = 1 if len(data.shape) == 1 else (data.shape, 1)
-    z1: np.ndarray = np.concatenate([np.zeros(dim), data[..., :-1]], axis=-1)
-    dim = 2 if len(data.shape) == 1 else (data.shape, 2)
-    z2: np.ndarray = np.concatenate([np.zeros(dim), data[..., :-2]], axis=-1)
-    assert z1.shape == data.shape and z2.shape == data.shape
+    z1: np.ndarray = np.concatenate([np.zeros(1), data[:-1]])
+    z2: np.ndarray = np.concatenate([np.zeros(2), data[:-2]])
+    assert data.shape == z1.shape and z1.shape == z2.shape
 
     mid_data: np.ndarray = b[0] * data + b[1] * z1 + b[2] * z2
     assert mid_data.shape == data.shape
 
     lpf_data: np.ndarray = np.concatenate([
-        np.array([mid_data[..., 0], mid_data[..., 1] - a[1] * mid_data[..., 0]]),
-        np.zeros(mid_data.shape[-1] - dim)
+        np.array([mid_data[0], mid_data[1] - a[1, 1] * mid_data[0]]),
+        np.zeros(len(mid_data) - 2)
     ])
-    for i in range(2, lpf_data.shape[-1]):
-        lpf_data[..., i] = mid_data[..., i] - a[1] * lpf_data[..., i-1] - a[2] * lpf_data[..., i-2]
+    for i in range(2, len(lpf_data)):
+        lpf_data[i] = mid_data[i] - a[1, i] * lpf_data[i-1] - a[2, i] * lpf_data[i-2]
     return lpf_data
