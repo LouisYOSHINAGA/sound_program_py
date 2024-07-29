@@ -28,39 +28,30 @@ def round_to_prime(xs: np.ndarray) -> int:
         3259, 3271, 3299, 3301, 3307, 3313, 3319, 3323, 3329, 3331, 3343, 3347, 3359, 3361, 3371, 3373, 3389, 3391, 3407, 3413,
         3433, 3449, 3457, 3461, 3463, 3467, 3469, 3491, 3499, 3511, 3517, 3527, 3529, 3533, 3539, 3541, 3547, 3557, 3559, 3571
     ])
-    xs = xs.astyp(np.int32)
-    idxs: int = np.argmin(np.abs(xs[:, np.newaxis] - primes[np.newaxis, :]))
+    xs = xs.astype(np.int32)
+    idxs: int = np.argmin(np.abs(xs[:, np.newaxis] - primes[np.newaxis, :]), axis=1)
     return primes[idxs]
 
-def delay_signals(xs: np.ndarray, delays: np.ndarray) -> np.ndarray:
-    if len(xs.shape) == 1:
-        xs = np.tile(xs, (len(delays), 1))
-    dxs: np.ndarray = np.zeros(xs.shpae)
-    for i, delay in enumerate(delays):
-        dxs[i, delay:] = xs[i, :-delay]
-    return dxs
-
 def reverb(x: np.ndarray, reverb_time: float, level: float, sr: int =44100) -> np.ndarray:
+    n_comb: int = 4
     taus_comb: np.ndarray = np.array([0.0300, 0.0350, 0.0400, 0.0450])
     ds_comb: np.ndarray = round_to_prime(taus_comb * sr)
     gs_comb: np.ndarray = np.power(10, -3*ds_comb/(reverb_time*sr))
 
-    ys: np.ndarray = np.empty((len(gs_comb), len(x)))
-    for i in range(ys.shpae[1]):
-        ys[:, i] = gs_comb * ys[:, i-ds_comb] + delay_signals(x, ds_comb)
+    ys: np.ndarray = np.zeros((n_comb, len(x)))
+    for i in range(n_comb):
+        for j in range(ds_comb[i], len(x)):
+            ys[i, j] = gs_comb[i] * ys[i, j-ds_comb[i]] + x[j-ds_comb[i]]
     y: np.ndarray = ys.sum(axis=0)
 
+    n_apf: int = 2
     taus_apf: np.ndarray = np.array([0.0050, 0.0017])
     ds_apf: np.ndarray = round_to_prime(taus_apf * sr)
     gs_apf: np.ndarray = np.full(2, 0.7)
 
-    zs: np.ndarray = np.zeros((1+len(gs_apf), len(y)))
+    zs: np.ndarray = np.zeros((1+n_apf, len(y)))
     zs[0] = y
-    for i in range(len(y)):
-        zs[0, i] = gs_apf[0] * zs[0, i-ds_apf[0]] - gs_apf[0] * y[i] + zs[0: i-ds_apf[0]]
-        zs[1, i] = gs_apf[1] * zs[1, i-ds_apf[1]] - gs_apf[1] * zs[0, i] + zs[1: i-ds_apf[0]]
-
-    for i in range(len(gs_apf)):
-        for j in range(len(y)):
-            zs[i+1, j] = gs_apf[i] * zs[i+1, j-ds_apf] - gs_apf[i] * zs[i, j] + zs[i+1, j-ds_apf[i]]
-    return x + level * zs[-1]
+    for i in range(n_apf):
+        for j in range(ds_apf[i], len(y)):
+            zs[i+1, j] = gs_apf[i] * zs[i+1, j-ds_apf[i]] - gs_apf[i] * zs[i, j] + zs[i, j-ds_apf[i]]
+    return x + level * zs[-1, :]
