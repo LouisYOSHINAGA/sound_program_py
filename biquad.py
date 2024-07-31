@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Any, Callable
 
 """
     omega := 2 pi fc / sr
@@ -418,7 +419,7 @@ def pf_coef(fc: float|np.ndarray, Q: float, g: float, sr: int) -> tuple[np.ndarr
     return a, b
 
 
-def biquad_filter(data: np.ndarray, coefs: tuple[np.ndarray, np.ndarray]) -> np.ndarray:
+def apply_biquad_filter(data: np.ndarray, coefs: tuple[np.ndarray, np.ndarray]) -> np.ndarray:
     a, b = coefs
     if len(a.shape) == 1:
       a = np.repeat(a[:, np.newaxis], len(data), axis=1)
@@ -438,3 +439,16 @@ def biquad_filter(data: np.ndarray, coefs: tuple[np.ndarray, np.ndarray]) -> np.
     for i in range(2, len(lpf_data)):
         lpf_data[i] = mid_data[i] - a[1, i] * lpf_data[i-1] - a[2, i] * lpf_data[i-2]
     return lpf_data
+
+def biquad_filter(data: np.ndarray, filter_type: str, **filter_kwargs: Any) -> np.ndarray:
+    filter_coef_funcs: dict[str, Callable[[Any], tuple[np.ndarray, np.ndarray]]] = {
+        'lowpass': lpf_coef,
+        'highpass': hpf_coef,
+        'bandpass': bpf_coef,
+        'bandeliminate': bef_coef,
+        'lowshelf': lsf_coef,
+        'highshelf': hsf_coef,
+        'peaking': pf_coef,
+    }
+    assert filter_type in filter_coef_funcs
+    return apply_biquad_filter(data, filter_coef_funcs[filter_type](**filter_kwargs))

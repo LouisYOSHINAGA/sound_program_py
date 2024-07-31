@@ -3,7 +3,7 @@ sys.path.append("..")
 import numpy as np
 import inspect
 from env import adsr
-from biquad import hpf_coef, biquad_filter
+from biquad import biquad_filter
 from wavio import write_wave_16bit
 
 
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     vca: np.ndarray = vca_param['offset']  \
                     + vca_param['depth'] * adsr(**{k: v for k, v in vca_param.items()
                                                    if k in inspect.signature(adsr).parameters.keys()})
-    y = vca * biquad_filter(y, hpf_coef(fc, Q, sr))
+    y = vca * biquad_filter(y, filter_type="highpass", fc=fc, Q=Q, sr=sr)
 
     blank: float = 1.0
     vol: float = 0.5

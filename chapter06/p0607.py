@@ -4,7 +4,7 @@ import numpy as np
 import inspect
 from env import adsr
 from osc import sawtooth
-from biquad import lpf_coef, biquad_filter
+from biquad import biquad_filter
 from wavio import write_wave_16bit
 
 
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     pf: dict[str, float] = partial_param['vcf']
     vcf: np.ndarray = pf['offset'] + pf['depth'] * adsr(**{k: v for k, v in pf.items() if k in adsr_args})
-    y = biquad_filter(y, lpf_coef(fc=vcf, Q=1/np.sqrt(2), sr=sr))
+    y = biquad_filter(y, filter_type="lowpass", fc=vcf, Q=1/np.sqrt(2), sr=sr)
 
     pa: dict[str, float] = partial_param['vca']
     vca: np.ndarray = pa['offset'] + pa['depth'] * adsr(**{k: v for k, v in pa.items() if k in adsr_args})
