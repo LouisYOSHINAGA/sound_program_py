@@ -1,4 +1,5 @@
 import numpy as np
+from biquad import lpf_coef, biquad_filter
 
 def round_to_prime(xs: np.ndarray) -> int:
     primes: np.ndarray = np.array([
@@ -55,3 +56,20 @@ def reverb(x: np.ndarray, reverb_time: float, level: float, sr: int =44100) -> n
         for j in range(ds_apf[i], len(y)):
             zs[i+1, j] = gs_apf[i] * zs[i+1, j-ds_apf[i]] - gs_apf[i] * zs[i, j] + zs[i, j-ds_apf[i]]
     return x + level * zs[-1, :]
+
+def distortion(x: np.ndarray, gain: float, level: float, sr: int =44100) -> np.ndarray:
+    fc: float = 2000
+    Q: float = 1 / np.sqrt(2)
+    y: np.ndarray = biquad_filter(x, filter_type="lowpass", fc=fc, Q=Q, sr=sr)
+
+    ratio: int = 4
+    z: np.ndarray = np.zeros(ratio*len(y))
+    z[: : ratio] = y
+
+    fc = 20000 / ratio
+    Q = 1 / np.sqrt(2)
+    y = biquad_filter(z, filter_type="lowpass", fc=fc, Q=Q, sr=sr)
+
+    y = np.tanh(5 * gain * y / 2)
+    y = y[: : ratio]
+    return level * y
