@@ -382,7 +382,7 @@ def lsf_coef(fc: float|np.ndarray, Q: float, g: float, sr: int) -> tuple[np.ndar
     a[2] = 1 - 2 * np.pi * fc / Q + (2 * np.pi * fc)**2
     b: np.ndarray = np.zeros(3) if isinstance(fc, (int, float)) else np.zeros((3, len(fc)))
     b[0] = 1 + 2 * np.pi * fc / Q * np.sqrt(1 + g) + (2 * np.pi * fc)**2 * (1 + g)
-    b[1] = 2 * (2 * np.pi * fc) * (1 + g) - 2
+    b[1] = 2 * (2 * np.pi * fc)**2 * (1 + g) - 2
     b[2] = 1 - 2 * np.pi * fc / Q * np.sqrt(1 + g) + (2 * np.pi * fc)**2 * (1 + g)
     b /= a[0]
     a /= a[0]
