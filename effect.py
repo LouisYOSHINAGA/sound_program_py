@@ -73,3 +73,16 @@ def distortion(x: np.ndarray, gain: float, level: float, sr: int =44100) -> np.n
     y = np.tanh(5 * gain * y / 2)
     y = y[: : ratio]
     return level * y
+
+def compressor(x: np.ndarray, threshold: float, width: float, ratio: float) -> np.ndarray:
+    gain: float = 1 / (threshold + (1 - threshold)/ratio)
+    absx: np.ndarray = np.abs(x)
+    y: np.ndarray = np.empty(x.shape)
+
+    conds: np.ndarray = absx < threshold - width/2
+    y[conds] = absx[conds]
+    conds = (threshold - width/2 <= absx) * (absx < threshold + width/2)
+    y[conds] = (absx + (1/ratio - 1) * (absx - threshold + width/2)**2 / (2*width))[conds]
+    conds = threshold + width/2 <= absx
+    y[conds] = (threshold + (absx - threshold) / ratio)[conds]
+    return np.sign(x) * gain * y
