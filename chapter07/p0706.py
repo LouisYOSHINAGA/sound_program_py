@@ -1,7 +1,7 @@
 import sys
 sys.path.append("..")
 import numpy as np
-from osc import sawtooth
+from osc import sine, sawtooth
 from wavio import write_wave_16bit
 
 
@@ -13,7 +13,7 @@ if __name__ == "__main__":
     rate: float = 1.0
 
     x: np.ndarray = sawtooth(fs=fs, sr=sr, sec=sec)
-    a: np.ndarray = 1 + depth * np.sin(2 * np.pi * rate * np.arange(0, sec, 1/sr))
+    a: np.ndarray = 1 + depth * sine(fs=rate, sr=sr, sec=sec)
     y: np.ndarray = a * x
 
     blank: float = 1.0
