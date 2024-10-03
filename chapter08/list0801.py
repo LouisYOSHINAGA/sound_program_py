@@ -1,44 +1,48 @@
 import sys
 sys.path.append("..")
 import numpy as np
-from wavio import write_wave_16bit
 import midi as m
+from wavio import write_wave_16bit
 
 
 A4FREQ: float = 440.0
 A4NOTE: int = 69
+FADEIN_SEC: float = 0.01
+TAIL_BLANK: float = 2.0
 
 
 def sine(noteno: int, velocity: int, sec: float, sr: int = 44100) -> np.ndarray:
-    freq: np.ndarray = np.full(int(sec * sr),
-                               A4FREQ * np.power(2, (noteno - A4NOTE)/12))
-    sine: np.ndarray = np.sin(2 * np.pi * freq / sr)
-    gain: float = np.max(np.abs(sine)) * (velocity / 127)
-    return gain * sine
+    ts: np.ndarray = np.arange(0, sec, 1/sr)
+    freq: float = A4FREQ * 2 ** ((noteno - A4NOTE) / 12)
+    sine: np.ndarray = np.sin(2 * np.pi * freq * ts)
+
+    fadein_sample: int = int(FADEIN_SEC * sr)
+    sine[:fadein_sample] *= np.arange(0, 1, 1/fadein_sample)
+    sine[-fadein_sample:] *= np.arange(1, 0, -1/fadein_sample)
+
+    return (velocity / 127) * sine
+
+def main(target_tracks: list[int], sr: int =44100) -> None:
+    div, tempo, n_tracks, eot, score = m.decode("canon.mid", is_verbose=False)
+    bpm: float = 60 / (tempo / 1e6)
+    dur: float = (eot / div) * (60 / bpm)
+
+    track: np.ndarray = np.zeros((int((dur+TAIL_BLANK)*sr), n_tracks))
+    for target_track in target_tracks:
+        for note in range(len(score)):
+            if score[note, m.TRACK_IN_SCORE] == target_track:
+                onset: float = (score[note, m.CURRENT_TIME_IN_SCORE] / div) * (60 / bpm)
+                offset: int = int(onset * sr)
+
+                noteno: int = score[note, m.NOTEON_IN_SCORE]
+                velocity: int = score[note, m.VELOCITY_IN_SCORE]
+                sec: float = (score[note, m.GATE_IN_SCORE] / div) * (60 / bpm)
+
+                track[offset:offset+int(sec*sr), target_track] += sine(noteno, velocity, sec, sr)
+        mvol: float = 0.5
+        y: np.ndarray = mvol / np.max(np.abs(track[:, target_track])) * track[:, target_track]
+        write_wave_16bit(y, sr=sr, filename=f"p0801_output_track_{target_track}.wav", is_mono=True)
 
 
 if __name__ == "__main__":
-    div, tempo, n_tracks, eot, score = m.decode("canon.mid", is_verbose=True)
-    tempo = 60 / (tempo / 1e6)
-    eot = (eot / div) * (60 / tempo)
-    n_notes: int = score.shape[0]
-
-    sr: int = 44100
-    track: np.ndarray = np.zeros((int((eot+2)*sr), n_tracks))
-    target_track: int = 0
-
-    for note in range(n_notes):
-        if int(score[note, 0] - 1) == target_track:
-            onset: int = (score[note, 1] / div) * (60 / tempo)
-            offset: int = int(onset * sr)
-
-            noteno: int = score[note, 2]
-            velocity: int = score[note, 3]
-            sec: int = (score[note, 4] / div) * (60 / tempo)
-
-            track[offset:offset+int(sec*sr), target_track] = sine(noteno, velocity, sec, sr)
-
-    mvol: float = 0.5
-    y: np.ndarray = mvol * np.max(np.abs(track[:, target_track]))
-
-    write_wave_16bit(y, sr=sr, filename="p0801_output.wav", is_mono=False)
+    main(target_tracks=[1, 2])
