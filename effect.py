@@ -1,5 +1,5 @@
 import numpy as np
-from biquad import lpf_coef, biquad_filter
+from biquad import biquad_filter
 
 def round_to_prime(xs: np.ndarray) -> int:
     primes: np.ndarray = np.array([
