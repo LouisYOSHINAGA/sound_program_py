@@ -6,7 +6,7 @@ def adsr(A: float, D: float, S: float, R: float, gate: float, dur: float, alpha:
     sample_D: int = int(D * sr)
     sample_gate: int = int(gate * sr)
     sample_R: int = int(R * sr)
-    sample: int = int(dur* sr)
+    sample: int = int(dur * sr)
 
     env: np.ndarray = np.empty(sample)
     env[0:sample_A] = (1 - np.exp(alpha * np.arange(sample_A) / sample_A)) / (1 - np.exp(alpha))

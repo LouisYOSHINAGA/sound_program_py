@@ -1,8 +1,8 @@
 import sys
 sys.path.append("..")
 import numpy as np
-from wavio import write_wave_16bit
 from instruments.glockenspiel import glockenspiel
+from wavio import write_wave_16bit
 
 
 def main(note_no: int, velocity: int, gate: float =0.1, duration: float =5.0,
