@@ -1,7 +1,7 @@
 import sys
 sys.path.append("..")
 import numpy as np
-from instruments.tubular_bells import tubular_bells
+from instruments.percussions import tubular_bells
 from wavio import write_wave_16bit
 
 
