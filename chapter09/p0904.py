@@ -1,7 +1,7 @@
 import sys
 sys.path.append("..")
 import numpy as np
-from instruments.marimba import marimba
+from instruments.percussions import marimba
 from wavio import write_wave_16bit
 
 
