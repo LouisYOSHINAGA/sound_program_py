@@ -4,6 +4,7 @@ import numpy as np
 from env import adsr
 from osc import sine
 from biquad import biquad_filter
+from effect import compressor
 import instruments.utils as utils
 
 
@@ -204,4 +205,55 @@ def xylophone(note_no: int, velocity: int, gate: float, duration: float =1.8, sr
     z2: np.ndarray = biquad_filter(data=z, filter_type="bandpass", fc=6.5*freq, Q=200, sr=sr)
     z3: np.ndarray = biquad_filter(data=z, filter_type="bandpass", fc=10*freq, Q=200, sr=sr)
     y: np.ndarray = vca * (z0 + z1 + z2 + z3)
+    return (velocity / 127) / np.max(np.abs(y)) * y
+
+
+def timpani(note_no: int, velocity: int, gate: float, duration: float =3.0, sr: int =44100) -> np.ndarray:
+    freq: float = utils.calc_freq(note_no)
+    adsr_args: list[str] = utils.get_func_kwargs(adsr)
+
+    # 0th path
+    params0: dict[str, dict[str, float]] = {
+        'vcf': {'A': 0.0, 'D': 0.5, 'S': 0.0, 'R': 0.5, 'gate': gate, 'dur': duration, 'offset': 2*freq, 'depth': 5000},
+        'vca': {'A': 0.0, 'D': 1.0, 'S': 0.0, 'R': 1.0, 'gate': gate, 'dur': duration, 'offset':      0, 'depth':    1},
+    }
+    vco0: np.ndarray = utils.noise(int(duration * sr))
+    vcf0: np.ndarray = params0['vcf']['offset'] \
+                     + params0['vcf']['depth'] * adsr(**{k: v for k, v in params0['vcf'].items() if k in adsr_args})
+    vca0: np.ndarray = params0['vca']['offset'] \
+                     + params0['vca']['depth'] * adsr(**{k: v for k, v in params0['vca'].items() if k in adsr_args})
+
+    freq_coefs0: list[float] = [
+         1.7,  2.7,  2.9,  3.4,  3.8,  4.2,  4.4,  4.8,  5.2,  5.6,
+         5.9,  6.3,  6.7,  7.3,  7.6,  7.8,  8.6,  8.9,  9.3,  9.6,
+        10.1, 10.4, 11.1, 11.7
+    ]
+    x0: np.ndarray = biquad_filter(data=vco0, filter_type="lowpass", fc=vcf0, Q=1/np.sqrt(2), sr=sr)
+    z0: np.ndarray = np.zeros(int(duration * sr))
+    for freq_coef in freq_coefs0:
+        z0 += biquad_filter(data=x0, filter_type="bandpass", fc=freq_coef*freq, Q=100, sr=sr)
+    y0: np.ndarray = vca0 * z0
+
+    # 1st path
+    params1: dict[str, dict[str, float]] = {
+        'vcf': {'A': 0.0, 'D': 1.0, 'S': 0.0, 'R': 1.0, 'gate': gate, 'dur': duration, 'offset': 2*freq, 'depth': 5000},
+        'vca': {'A': 0.0, 'D': 2.0, 'S': 0.0, 'R': 2.0, 'gate': gate, 'dur': duration, 'offset':      0, 'depth':    1},
+    }
+    vco1: np.ndarray = utils.noise(int(duration * sr))
+    vcf1: np.ndarray = params1['vcf']['offset'] \
+                     + params1['vcf']['depth'] * adsr(**{k: v for k, v in params1['vcf'].items() if k in adsr_args})
+    vca1: np.ndarray = params1['vca']['offset'] \
+                     + params1['vca']['depth'] * adsr(**{k: v for k, v in params1['vca'].items() if k in adsr_args})
+
+    freq_coefs1: list[float] = [1.0, 1.5, 2.0, 2.5]
+    x1: np.ndarray = biquad_filter(data=vco1, filter_type="lowpass", fc=vcf1, Q=1/np.sqrt(2), sr=sr)
+    z1: np.ndarray = np.zeros(int(duration * sr))
+    for freq_coef in freq_coefs1:
+        z1 += biquad_filter(data=x1, filter_type="bandpass", fc=freq_coef*freq, Q=200, sr=sr)
+    y1: np.ndarray = vca1 * z1
+
+    # integration
+    y: np.ndarray = 0.3 / np.max(np.abs(y0)) * y0 + 0.7 / np.max(np.abs(y1)) * y1
+    y /= np.max(np.abs(y))
+    y = compressor(y, threshold=0.5, width=0.4, ratio=8)
     return (velocity / 127) / np.max(np.abs(y)) * y
