@@ -1,7 +1,7 @@
 import sys
 sys.path.append("..")
 import numpy as np
-from instruments.glockenspiel import glockenspiel
+from instruments.percussions import glockenspiel
 from wavio import write_wave_16bit
 
 
