@@ -1,7 +1,7 @@
 import sys
 sys.path.append("..")
 import numpy as np
-from instruments.triangle import *
+from instruments.percussions import triangle_in, triangle_out
 from wavio import write_wave_16bit
 
 
