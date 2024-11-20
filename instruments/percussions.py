@@ -257,3 +257,27 @@ def timpani(note_no: int, velocity: int, gate: float, duration: float =3.0, sr: 
     y /= np.max(np.abs(y))
     y = compressor(y, threshold=0.5, width=0.4, ratio=8)
     return (velocity / 127) / np.max(np.abs(y)) * y
+
+
+def cymbal(velocity: int, gate: float, duration: float =4.0, sr: int =44100) -> np.ndarray:
+    params: dict[str, dict[str, float]] = {
+        'vcf': {'A': 0.1, 'D': 3.0, 'S': 0.0, 'R': 3.0, 'gate': gate, 'dur': duration, 'offset': 50, 'depth': 16000},
+        'vca': {'A': 0.0, 'D': 3.0, 'S': 0.0, 'R': 3.0, 'gate': gate, 'dur': duration, 'offset':  0, 'depth':     1},
+    }
+    adsr_args: list[str] = utils.get_func_kwargs(adsr)
+    vco: np.ndarray = utils.noise(int(duration * sr))
+    vcf: np.ndarray = params['vcf']['offset'] \
+                    + params['vcf']['depth'] * adsr(**{k: v for k, v in params['vcf'].items() if k in adsr_args})
+    vca: np.ndarray = params['vca']['offset'] \
+                    + params['vca']['depth'] * adsr(**{k: v for k, v in params['vca'].items() if k in adsr_args})
+
+    rng: np.random.Generator = np.random.default_rng(1)
+    freq_low: float = 500
+    freq_high: float = 20000
+    x: np.ndarray = biquad_filter(data=vco, filter_type="lowpass", fc=vcf, Q=1/np.sqrt(2), sr=sr)
+    z: np.ndarray = np.zeros(int(duration * sr))
+    for _ in range(100):
+        fc: float = freq_low + np.minimum(1, -np.log(1-rng.random())/10) * (freq_high - freq_low)
+        z += biquad_filter(data=x, filter_type="bandpass", fc=fc, Q=100, sr=sr)
+    y: np.ndarray = vca * z
+    return (velocity / 127) / np.max(np.abs(y)) * y
