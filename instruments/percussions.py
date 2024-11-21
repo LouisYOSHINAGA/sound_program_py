@@ -305,3 +305,18 @@ def tamtam(velocity: int, gate: float, duration: float =9.0, sr: int =44100) -> 
         z += biquad_filter(data=x, filter_type="bandpass", fc=fc, Q=100, sr=sr)
     y: np.ndarray = vca * z
     return (velocity / 127) / np.max(np.abs(y)) * y
+
+
+def hihat(velocity: int, gate: float, duration: float =1.1, sr: int =44100) -> np.ndarray:
+    params: dict[str, dict[str, float]] = {
+        'vcf': {'A': 0.0, 'D': 0.0, 'S': 1.0, 'R': 0.0, 'gate': duration, 'dur': duration, 'offset': 10000, 'depth': 0},
+        'vca': {'A': 0.0, 'D': 0.1, 'S': 0.0, 'R': 0.1, 'gate':     gate, 'dur': duration, 'offset':     0, 'depth': 1},
+    }
+    adsr_args: list[str] = utils.get_func_kwargs(adsr)
+    vco: np.ndarray = utils.noise(int(duration * sr))
+    vcf: np.ndarray = params['vcf']['offset'] \
+                    + params['vcf']['depth'] * adsr(**{k: v for k, v in params['vcf'].items() if k in adsr_args})
+    vca: np.ndarray = params['vca']['offset'] \
+                    + params['vca']['depth'] * adsr(**{k: v for k, v in params['vca'].items() if k in adsr_args})
+    y: np.ndarray = vca * biquad_filter(data=vco, filter_type="highpass", fc=vcf, Q=1/np.sqrt(2), sr=sr)
+    return (velocity / 127) / np.max(np.abs(y)) * y
