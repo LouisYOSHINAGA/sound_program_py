@@ -2,7 +2,7 @@ import sys
 sys.path.append("..")
 import numpy as np
 from env import adsr
-from osc import sine
+from osc import sine, square
 from biquad import biquad_filter
 from effect import compressor
 import instruments.utils as utils
@@ -387,6 +387,41 @@ def tom(velocity: int, gate: float, duration: float =1.4, sr: int =44100) -> np.
     vca2: np.ndarray = params2['vca']['offset'] \
                      + params2['vca']['depth'] * adsr(**{k: v for k, v in params2['vca'].items() if k in adsr_args})
     z: np.ndarray = vca2 * biquad_filter(0.6*z0 + 0.4*z1, filter_type="lowpass", fc=vcf2, Q=1/np.sqrt(2), sr=sr)
+    z /= np.max(np.abs(z))
+    y: np.ndaray = compressor(z, threshold=0.5, width=0.4, ratio=8)
+    return (velocity / 127) / np.max(np.abs(y)) * y
+
+
+def snare(velocity: int, gate: float, duration: float =1.2, sr: int =44100) -> np.ndarray:
+    adsr_args: list[str] = utils.get_func_kwargs(adsr)
+
+    # head
+    params0: dict[str, dict[str, float]] = {
+        'vca': {'A': 0.0, 'D': 1.0, 'S': 0.0, 'R': 1.0, 'gate': duration, 'dur': duration, 'offset': 0, 'depth': 1},
+    }
+    vco0: np.ndarray = utils.noise(int(duration * sr))
+    vca0: np.ndarray = params0['vca']['offset'] \
+                     + params0['vca']['depth'] * adsr(**{k: v for k, v in params0['vca'].items() if k in adsr_args})
+    z0: np.ndarray = vca0 * vco0
+
+    # body
+    params1: dict[str, dict[str, float]] = {
+        'vco': {'A': 0.0, 'D': 1.0, 'S': 0.0, 'R': 1.0, 'gate': duration, 'dur': duration, 'offset': 150, 'depth': 0},
+    }
+    vco1: np.ndarray = params1['vco']['offset'] \
+                     + params1['vco']['depth'] * adsr(**{k: v for k, v in params1['vco'].items() if k in adsr_args})
+    z1: np.ndarray = square(fs=vco1, sr=sr, sec=duration)
+
+    # integration
+    params2: dict[str, dict[str, float]] = {
+        'vcf': {'A': 0.0, 'D': 0.1, 'S': 0.0, 'R': 0.1, 'gate': gate, 'dur': duration, 'offset': 8000, 'depth': -7800},
+        'vca': {'A': 0.0, 'D': 0.2, 'S': 0.0, 'R': 0.2, 'gate': gate, 'dur': duration, 'offset':    0, 'depth':     1},
+    }
+    vcf2: np.ndarray = params2['vcf']['offset'] \
+                     + params2['vcf']['depth'] * adsr(**{k: v for k, v in params2['vcf'].items() if k in adsr_args})
+    vca2: np.ndarray = params2['vca']['offset'] \
+                     + params2['vca']['depth'] * adsr(**{k: v for k, v in params2['vca'].items() if k in adsr_args})
+    z: np.ndarray = vca2 * biquad_filter(0.7*z0 + 0.3*z1, filter_type="lowpass", fc=vcf2, Q=1/np.sqrt(2), sr=sr)
     z /= np.max(np.abs(z))
     y: np.ndaray = compressor(z, threshold=0.5, width=0.4, ratio=8)
     return (velocity / 127) / np.max(np.abs(y)) * y
