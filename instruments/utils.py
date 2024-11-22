@@ -13,3 +13,9 @@ def noise(n_sample: int, seed: int =0) -> np.ndarray:
 
 def get_func_kwargs(fn: Callable[[Any], Any]) -> list[str]:
     return inspect.signature(fn).parameters.keys()
+
+def calc_delayar(offsets: np.ndarray|float, p1: float, p2: float, p3: float, p4: float, is_delay: bool =False) -> np.ndarray:
+    delayar: np.ndarray = 1 / (1 + np.exp(-(offsets - p1) / p3)) * p4 + p2
+    if is_delay and not isinstance(offsets, float):
+        delayar = delayar - delayar[0]
+    return delayar
