@@ -1,5 +1,6 @@
 import numpy as np
 import inspect
+from wavio import write_wave_16bit
 from typing import Callable, Any
 
 A4_FREQ: float = 440.0
@@ -19,3 +20,12 @@ def calc_delayar(offsets: np.ndarray|float, p1: float, p2: float, p3: float, p4:
     if is_delay and not isinstance(offsets, float):
         delayar = delayar - delayar[0]
     return delayar
+
+def render_pad_save(render_fn: Callable[[Any], np.ndarray], save_title: str, 
+                    blanks: tuple[float, float] =[1.0, 2.0], sr: int =44100,
+                    **render_kwargs: Any) -> None:
+    x: np.ndarray = render_fn(**render_kwargs)
+    w: np.ndarray = np.zeros(int(blanks[0] * sr))
+    z: np.ndarray = np.zeros(int(blanks[1] * sr))
+    y: np.ndarray = np.concatenate([w, x, z])
+    write_wave_16bit(y, sr=sr, filename=save_title, is_mono=True)
