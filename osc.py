@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Any
 
 
 def sine(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:
@@ -55,11 +56,5 @@ def square(fs: float|np.ndarray, sr: int, sec: float|None =None) -> np.ndarray:
     return ys + ds
 
 
-def white_noise(fs: float|np.ndarray, sr: int, sec: float) -> np.ndarray:
-    if isinstance(fs, (int, float)):
-        assert sec is not None
-        fs = np.full(int(sec*sr), fs)
-    assert isinstance(fs, np.ndarray)
-    ys: np.ndarray = 2 * np.random.rand(*fs.shape) - 1
-    assert np.all(-1 <= ys) and np.all(ys <= 1)
-    return ys
+def noise(sr: int, sec: float, seed: int|None =None, **disposed: Any) -> np.ndarray:
+    return 2 * (np.random.default_rng(seed).random(size=int(sec*sr)) - 0.5)
