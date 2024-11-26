@@ -48,3 +48,7 @@ def trombone(note_no: int, velocity: int, gate: float, duration: float, sr: int 
 
 def horn(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
     return abstruct_brass(note_no=note_no, velocity=velocity, gate=gate, duration=duration, f=1200, sr=sr)
+
+
+def tuba(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
+    return abstruct_brass(note_no=note_no, velocity=velocity, gate=gate, duration=duration, f=800, sr=sr)
