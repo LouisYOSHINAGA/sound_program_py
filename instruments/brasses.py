@@ -7,7 +7,7 @@ from biquad import biquad_filter
 from instruments.utils import calc_freq, calc_delayar
 
 
-def abstruct_brass(note_no: int, velocity: int, gate: float, duration: float, f: float, sr: int =44100) -> np.ndarray:
+def abstract_brass(note_no: int, velocity: int, gate: float, duration: float, f: float, sr: int =44100) -> np.ndarray:
     freq: float = calc_freq(note_no)
     n_partial: int = int(np.clip(2*f/freq, 5, 30))
 
@@ -39,16 +39,16 @@ def abstruct_brass(note_no: int, velocity: int, gate: float, duration: float, f:
 
 
 def trumpet(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
-    return abstruct_brass(note_no=note_no, velocity=velocity, gate=gate, duration=duration, f=3000, sr=sr)
+    return abstract_brass(note_no=note_no, velocity=velocity, gate=gate, duration=duration, f=3000, sr=sr)
 
 
 def trombone(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
-    return abstruct_brass(note_no=note_no, velocity=velocity, gate=gate, duration=duration, f=1800, sr=sr)
+    return abstract_brass(note_no=note_no, velocity=velocity, gate=gate, duration=duration, f=1800, sr=sr)
 
 
 def horn(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
-    return abstruct_brass(note_no=note_no, velocity=velocity, gate=gate, duration=duration, f=1200, sr=sr)
+    return abstract_brass(note_no=note_no, velocity=velocity, gate=gate, duration=duration, f=1200, sr=sr)
 
 
 def tuba(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
-    return abstruct_brass(note_no=note_no, velocity=velocity, gate=gate, duration=duration, f=800, sr=sr)
+    return abstract_brass(note_no=note_no, velocity=velocity, gate=gate, duration=duration, f=800, sr=sr)
