@@ -41,3 +41,9 @@ def viola(note_no: int, velocity: int, gate: float, duration: float, sr: int =44
     return abstract_string(
         note_no=note_no, velocity=velocity, gate=gate, duration=duration, f_lpf=1400, f_hpf=200, sr=sr
     )
+
+
+def cello(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
+    return abstract_string(
+        note_no=note_no, velocity=velocity, gate=gate, duration=duration, f_lpf=900, f_hpf=150, sr=sr
+    )
