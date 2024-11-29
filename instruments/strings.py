@@ -35,3 +35,9 @@ def violin(note_no: int, velocity: int, gate: float, duration: float, sr: int =4
     return abstract_string(
         note_no=note_no, velocity=velocity, gate=gate, duration=duration, f_lpf=2000, f_hpf=250, sr=sr
     )
+
+
+def viola(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
+    return abstract_string(
+        note_no=note_no, velocity=velocity, gate=gate, duration=duration, f_lpf=1400, f_hpf=200, sr=sr
+    )
