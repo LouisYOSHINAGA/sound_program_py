@@ -47,3 +47,9 @@ def cello(note_no: int, velocity: int, gate: float, duration: float, sr: int =44
     return abstract_string(
         note_no=note_no, velocity=velocity, gate=gate, duration=duration, f_lpf=900, f_hpf=150, sr=sr
     )
+
+
+def contrabass(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
+    return abstract_string(
+        note_no=note_no, velocity=velocity, gate=gate, duration=duration, f_lpf=500, f_hpf=100, sr=sr
+    )
