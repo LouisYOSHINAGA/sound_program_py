@@ -2,14 +2,14 @@ import sys
 sys.path.append("..")
 import numpy as np
 from env import adsr
-from osc import sine, square
+from osc import sine, square, noise
 from biquad import biquad_filter
 from effect import compressor
-import instruments.utils as utils
+from instruments.utils import calc_freq, get_func_kwargs
 
 
 def glockenspiel(note_no: int, velocity: int, gate: float, duration: float =5.0, sr: int =44100) -> np.ndarray:
-    freq: float = utils.calc_freq(note_no)
+    freq: float = calc_freq(note_no)
     vco_params: list[dict[str, float]] = [
         {'A': 0.0, 'D': 0.0, 'S': 1.0, 'R': 0.0, 'gate': duration, 'dur': duration, 'offset':  1.0*freq, 'depth': 0.0},
         {'A': 0.0, 'D': 0.0, 'S': 1.0, 'R': 0.0, 'gate': duration, 'dur': duration, 'offset':  2.8*freq, 'depth': 0.0},
@@ -30,7 +30,7 @@ def glockenspiel(note_no: int, velocity: int, gate: float, duration: float =5.0,
     ]
     assert len(vco_params) == len(vca_params)
 
-    adsr_args: list[str] = utils.get_func_kwargs(adsr)
+    adsr_args: list[str] = get_func_kwargs(adsr)
     ys: np.ndarray = np.zeros((len(vco_params), int(duration*sr)))
     for i, (vco_param, vca_param) in enumerate(zip(vco_params, vca_params)):
         vco: np.ndarray = vco_param['offset'] \
@@ -78,7 +78,7 @@ def triangle_in(velocity: int, gate: float, duration: float =9.0, sr: int =44100
     ]
     assert len(vco_offsets) == len(vca_params)
 
-    adsr_args: list[str] = utils.get_func_kwargs(adsr)
+    adsr_args: list[str] = get_func_kwargs(adsr)
     ys: np.ndarray = np.zeros((len(vco_offsets), int(duration*sr)))
     for i, (vco_offset, vca_param) in enumerate(zip(vco_offsets, vca_params)):
         vco: np.ndarray = np.repeat(vco_offset, int(duration*sr))
@@ -125,7 +125,7 @@ def triangle_out(velocity: int, gate: float, duration: float =9.0, sr: int =4410
     ]
     assert len(vco_offsets) == len(vca_params)
 
-    adsr_args: list[str] = utils.get_func_kwargs(adsr)
+    adsr_args: list[str] = get_func_kwargs(adsr)
     ys: np.ndarray = np.zeros((len(vco_offsets), int(duration*sr)))
     for i, (vco_offset, vca_param) in enumerate(zip(vco_offsets, vca_params)):
         vco: np.ndarray = np.repeat(vco_offset, int(duration*sr))
@@ -138,7 +138,7 @@ def triangle_out(velocity: int, gate: float, duration: float =9.0, sr: int =4410
 
 
 def tubular_bells(note_no: int, velocity: int, gate: float, duration: float =5.0, sr: int =44100) -> np.ndarray:
-    freq: float = utils.calc_freq(note_no)
+    freq: float = calc_freq(note_no)
     params_mod: dict[str, dict[str, float]] = {
         'vco': {'A': 0.0, 'D': 0.0, 'S': 1.0, 'R': 0.0, 'gate': duration, 'dur': duration, 'offset': 3.5*freq, 'depth': 0.0},
         'vca': {'A': 0.0, 'D': 2.0, 'S': 0.0, 'R': 2.0, 'gate': gate,     'dur': duration, 'offset':        0, 'depth': 1.0},
@@ -148,7 +148,7 @@ def tubular_bells(note_no: int, velocity: int, gate: float, duration: float =5.0
         'vca': {'A': 0.0, 'D': 4.0, 'S': 0.0, 'R': 4.0, 'gate': gate,     'dur': duration, 'offset':        0, 'depth': 1.0},
     }
 
-    adsr_args: list[str] = utils.get_func_kwargs(adsr)
+    adsr_args: list[str] = get_func_kwargs(adsr)
     vco_mod: np.ndarray = params_mod['vco']['offset'] \
                         + params_mod['vco']['depth'] * adsr(**{k: v for k, v in params_mod['vco'].items() if k in adsr_args})
     vca_mod: np.ndarray = params_mod['vca']['offset'] \
@@ -169,14 +169,14 @@ def marimba(note_no: int, velocity: int, gate: float, duration: float =1.8, sr: 
         'vcf': {'A': 0.0, 'D': 0.2, 'S': 0.0, 'R': 0.2, 'gate': gate, 'dur': duration, 'offset': 500, 'depth': 2000},
         'vca': {'A': 0.0, 'D': 0.8, 'S': 0.0, 'R': 0.8, 'gate': gate, 'dur': duration, 'offset':   0, 'depth':    1},
     }
-    adsr_args: list[str] = utils.get_func_kwargs(adsr)
-    vco: np.ndarray = utils.noise(int(duration * sr))
+    adsr_args: list[str] = get_func_kwargs(adsr)
+    vco: np.ndarray = noise(sec=duration, sr=sr)
     vcf: np.ndarray = params['vcf']['offset'] \
                     + params['vcf']['depth'] * adsr(**{k: v for k, v in params['vcf'].items() if k in adsr_args})
     vca: np.ndarray = params['vca']['offset'] \
                     + params['vca']['depth'] * adsr(**{k: v for k, v in params['vca'].items() if k in adsr_args})
 
-    freq: float = utils.calc_freq(note_no)
+    freq: float = calc_freq(note_no)
     x: np.ndarray = biquad_filter(data=vco, filter_type="lowpass", fc=freq, Q=1/np.sqrt(2), sr=sr)
     z: np.ndarray = biquad_filter(data=x, filter_type="lowpass", fc=vcf, Q=1/np.sqrt(2), sr=sr)
     z0: np.ndarray = biquad_filter(data=z, filter_type="bandpass", fc=freq, Q=200, sr=sr)
@@ -191,14 +191,14 @@ def xylophone(note_no: int, velocity: int, gate: float, duration: float =1.8, sr
         'vcf': {'A': 0.0, 'D': 0.2, 'S': 0.0, 'R': 0.2, 'gate': gate, 'dur': duration, 'offset': 500, 'depth': 2000},
         'vca': {'A': 0.0, 'D': 0.8, 'S': 0.0, 'R': 0.8, 'gate': gate, 'dur': duration, 'offset':   0, 'depth':    1},
     }
-    adsr_args: list[str] = utils.get_func_kwargs(adsr)
-    vco: np.ndarray = utils.noise(int(duration * sr))
+    adsr_args: list[str] = get_func_kwargs(adsr)
+    vco: np.ndarray = noise(sec=duration, sr=sr)
     vcf: np.ndarray = params['vcf']['offset'] \
                     + params['vcf']['depth'] * adsr(**{k: v for k, v in params['vcf'].items() if k in adsr_args})
     vca: np.ndarray = params['vca']['offset'] \
                     + params['vca']['depth'] * adsr(**{k: v for k, v in params['vca'].items() if k in adsr_args})
 
-    freq: float = utils.calc_freq(note_no)
+    freq: float = calc_freq(note_no)
     z: np.ndarray = biquad_filter(data=vco, filter_type="lowpass", fc=vcf, Q=1/np.sqrt(2), sr=sr)
     z0: np.ndarray = biquad_filter(data=z, filter_type="bandpass", fc=freq, Q=200, sr=sr)
     z1: np.ndarray = biquad_filter(data=z, filter_type="bandpass", fc=3*freq, Q=200, sr=sr)
@@ -209,15 +209,15 @@ def xylophone(note_no: int, velocity: int, gate: float, duration: float =1.8, sr
 
 
 def timpani(note_no: int, velocity: int, gate: float, duration: float =3.0, sr: int =44100) -> np.ndarray:
-    freq: float = utils.calc_freq(note_no)
-    adsr_args: list[str] = utils.get_func_kwargs(adsr)
+    freq: float = calc_freq(note_no)
+    adsr_args: list[str] = get_func_kwargs(adsr)
 
     # 0th path
     params0: dict[str, dict[str, float]] = {
         'vcf': {'A': 0.0, 'D': 0.5, 'S': 0.0, 'R': 0.5, 'gate': gate, 'dur': duration, 'offset': 2*freq, 'depth': 5000},
         'vca': {'A': 0.0, 'D': 1.0, 'S': 0.0, 'R': 1.0, 'gate': gate, 'dur': duration, 'offset':      0, 'depth':    1},
     }
-    vco0: np.ndarray = utils.noise(int(duration * sr))
+    vco0: np.ndarray = noise(sec=duration, sr=sr)
     vcf0: np.ndarray = params0['vcf']['offset'] \
                      + params0['vcf']['depth'] * adsr(**{k: v for k, v in params0['vcf'].items() if k in adsr_args})
     vca0: np.ndarray = params0['vca']['offset'] \
@@ -239,7 +239,7 @@ def timpani(note_no: int, velocity: int, gate: float, duration: float =3.0, sr: 
         'vcf': {'A': 0.0, 'D': 1.0, 'S': 0.0, 'R': 1.0, 'gate': gate, 'dur': duration, 'offset': 2*freq, 'depth': 5000},
         'vca': {'A': 0.0, 'D': 2.0, 'S': 0.0, 'R': 2.0, 'gate': gate, 'dur': duration, 'offset':      0, 'depth':    1},
     }
-    vco1: np.ndarray = utils.noise(int(duration * sr))
+    vco1: np.ndarray = noise(sec=duration, sr=sr)
     vcf1: np.ndarray = params1['vcf']['offset'] \
                      + params1['vcf']['depth'] * adsr(**{k: v for k, v in params1['vcf'].items() if k in adsr_args})
     vca1: np.ndarray = params1['vca']['offset'] \
@@ -264,8 +264,8 @@ def cymbal(velocity: int, gate: float, duration: float =4.0, sr: int =44100) -> 
         'vcf': {'A': 0.1, 'D': 3.0, 'S': 0.0, 'R': 3.0, 'gate': gate, 'dur': duration, 'offset': 50, 'depth': 16000},
         'vca': {'A': 0.0, 'D': 3.0, 'S': 0.0, 'R': 3.0, 'gate': gate, 'dur': duration, 'offset':  0, 'depth':     1},
     }
-    adsr_args: list[str] = utils.get_func_kwargs(adsr)
-    vco: np.ndarray = utils.noise(int(duration * sr))
+    adsr_args: list[str] = get_func_kwargs(adsr)
+    vco: np.ndarray = noise(sec=duration, sr=sr)
     vcf: np.ndarray = params['vcf']['offset'] \
                     + params['vcf']['depth'] * adsr(**{k: v for k, v in params['vcf'].items() if k in adsr_args})
     vca: np.ndarray = params['vca']['offset'] \
@@ -288,8 +288,8 @@ def tamtam(velocity: int, gate: float, duration: float =9.0, sr: int =44100) -> 
         'vcf': {'A': 2.5, 'D': 5.0, 'S': 0.0, 'R': 5.0, 'gate': gate, 'dur': duration, 'offset': 50, 'depth': 16000},
         'vca': {'A': 0.0, 'D': 7.0, 'S': 0.0, 'R': 7.0, 'gate': gate, 'dur': duration, 'offset':  0, 'depth':     1},
     }
-    adsr_args: list[str] = utils.get_func_kwargs(adsr)
-    vco: np.ndarray = utils.noise(int(duration * sr))
+    adsr_args: list[str] = get_func_kwargs(adsr)
+    vco: np.ndarray = noise(sec=duration, sr=sr)
     vcf: np.ndarray = params['vcf']['offset'] \
                     + params['vcf']['depth'] * adsr(**{k: v for k, v in params['vcf'].items() if k in adsr_args})
     vca: np.ndarray = params['vca']['offset'] \
@@ -312,8 +312,8 @@ def hihat(velocity: int, gate: float, duration: float =1.1, sr: int =44100) -> n
         'vcf': {'A': 0.0, 'D': 0.0, 'S': 1.0, 'R': 0.0, 'gate': duration, 'dur': duration, 'offset': 10000, 'depth': 0},
         'vca': {'A': 0.0, 'D': 0.1, 'S': 0.0, 'R': 0.1, 'gate':     gate, 'dur': duration, 'offset':     0, 'depth': 1},
     }
-    adsr_args: list[str] = utils.get_func_kwargs(adsr)
-    vco: np.ndarray = utils.noise(int(duration * sr))
+    adsr_args: list[str] = get_func_kwargs(adsr)
+    vco: np.ndarray = noise(sec=duration, sr=sr)
     vcf: np.ndarray = params['vcf']['offset'] \
                     + params['vcf']['depth'] * adsr(**{k: v for k, v in params['vcf'].items() if k in adsr_args})
     vca: np.ndarray = params['vca']['offset'] \
@@ -323,13 +323,13 @@ def hihat(velocity: int, gate: float, duration: float =1.1, sr: int =44100) -> n
 
 
 def kick(velocity: int, gate: float, duration: float =1.3, sr: int =44100) -> np.ndarray:
-    adsr_args: list[str] = utils.get_func_kwargs(adsr)
+    adsr_args: list[str] = get_func_kwargs(adsr)
 
     # head
     params0: dict[str, dict[str, float]] = {
         'vca': {'A': 0.0, 'D': 0.2, 'S': 0.0, 'R': 0.2, 'gate': gate, 'dur': duration, 'offset': 0, 'depth': 1},
     }
-    vco0: np.ndarray = utils.noise(int(duration * sr))
+    vco0: np.ndarray = noise(sec=duration, sr=sr)
     vca0: np.ndarray = params0['vca']['offset'] \
                      + params0['vca']['depth'] * adsr(**{k: v for k, v in params0['vca'].items() if k in adsr_args})
     z0: np.ndarray = vca0 * vco0
@@ -358,13 +358,13 @@ def kick(velocity: int, gate: float, duration: float =1.3, sr: int =44100) -> np
 
 
 def tom(velocity: int, gate: float, duration: float =1.4, sr: int =44100) -> np.ndarray:
-    adsr_args: list[str] = utils.get_func_kwargs(adsr)
+    adsr_args: list[str] = get_func_kwargs(adsr)
 
     # head
     params0: dict[str, dict[str, float]] = {
         'vca': {'A': 0.0, 'D': 0.2, 'S': 0.0, 'R': 0.2, 'gate': gate, 'dur': duration, 'offset': 0, 'depth': 1},
     }
-    vco0: np.ndarray = utils.noise(int(duration * sr))
+    vco0: np.ndarray = noise(sec=duration, sr=sr)
     vca0: np.ndarray = params0['vca']['offset'] \
                      + params0['vca']['depth'] * adsr(**{k: v for k, v in params0['vca'].items() if k in adsr_args})
     z0: np.ndarray = vca0 * vco0
@@ -393,13 +393,13 @@ def tom(velocity: int, gate: float, duration: float =1.4, sr: int =44100) -> np.
 
 
 def snare(velocity: int, gate: float, duration: float =1.2, sr: int =44100) -> np.ndarray:
-    adsr_args: list[str] = utils.get_func_kwargs(adsr)
+    adsr_args: list[str] = get_func_kwargs(adsr)
 
     # head
     params0: dict[str, dict[str, float]] = {
         'vca': {'A': 0.0, 'D': 1.0, 'S': 0.0, 'R': 1.0, 'gate': duration, 'dur': duration, 'offset': 0, 'depth': 1},
     }
-    vco0: np.ndarray = utils.noise(int(duration * sr))
+    vco0: np.ndarray = noise(sec=duration, sr=sr)
     vca0: np.ndarray = params0['vca']['offset'] \
                      + params0['vca']['depth'] * adsr(**{k: v for k, v in params0['vca'].items() if k in adsr_args})
     z0: np.ndarray = vca0 * vco0
