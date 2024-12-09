@@ -56,39 +56,24 @@ def contrabass(note_no: int, velocity: int, gate: float, duration: float, sr: in
     )
 
 
-def harp(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
-    WIN_LEN: int = 128
-    freq: float = calc_freq(note_no)
-
-    # feedback filter
-    d: float = calc_delayar(note_no, p1=70, p2=0, p3=120/12, p4=0.5, is_sub=True)
-    fbk_decay: float = calc_delayar(note_no, p1=75, p2=0, p3=120/12, p4=20, is_sub=True)
-    num: float = np.power(10, -3/freq/fbk_decay)
-    den: float = np.sqrt((1 - d) ** 2 + 2 * d * (1 - d) * np.cos(2 * np.pi * freq / sr) + d ** 2)
-    c: float = np.minimum(num/den, 1)
-
-    # delayline
-    n_delay: int = int(sr / freq - d)
-    f_delay: float = sr / freq - d - n_delay
-    apf_coef: float = (1 - f_delay) / (1 + f_delay)
-
-    # Kerplus-Strong
+def plucked_string_karplus_strong(freq: float, n_delay: int, win_len: int, duration: float, sr: int) -> np.ndarray:
     z: np.ndarray = np.zeros(int(duration*sr))
     n_partial: int = int(20000 / freq)
     for i in range(n_partial):
-        z[:n_delay+1+WIN_LEN] += np.sin(
-            2 * np.pi * freq * (i+1) * np.arange(n_delay+1+WIN_LEN) / sr + 2 * (np.random.default_rng().random() - 0.5) * np.pi
+        z[:n_delay+1+win_len] += np.sin(
+            2 * np.pi * freq * (i+1) * np.arange(n_delay+1+win_len) / sr + 2 * (np.random.default_rng().random() - 0.5) * np.pi
         )
     z -= np.mean(z)
+    return z
 
-    # fractional delay, feedback
+def plucked_string_delay_feedback(z: np.ndarray, win_len: int, n_delay: int, apf_coef: float, c: float, d: float, duration: float, sr: int) -> np.ndarray:
     fdelays: np.ndarray = np.zeros(int(duration*sr))
-    for i in range(n_delay+1+WIN_LEN, int(duration*sr)):
+    for i in range(n_delay+1+win_len, int(duration*sr)):
         fdelays[i] = - apf_coef * fdelays[i-1] + apf_coef * z[i-n_delay] + z[i-n_delay-1]
         z[i] += c * ((1 - d) * fdelays[i] + d * fdelays[i-1])
+    return z
 
-    # comb filter
-    pos: float = 0.5
+def plucked_string_comb_filter(z: np.ndarray, freq: float, pos: float, n_delay: int, duration: float, sr: int) -> np.ndarray:
     u: np.ndarray = np.zeros(int(duration*sr))
     for i in range(int(duration*sr)):
         idx: float = i - pos * sr / freq
@@ -98,7 +83,70 @@ def harp(note_no: int, velocity: int, gate: float, duration: float, sr: int =441
             u[i] = z[i] - (idx_frac * z[idx_int+1+n_delay+1] + (1 - idx_frac) * z[idx_int+n_delay+1])
         else:
             u[i] = z[i] - (idx_frac * z[idx_int+1] + (1 - idx_frac) * z[idx_int])
-    z = u
+    return u
+
+def plucked_string_frequency_filter(z: np.ndarray, note_no: int, lowest_note_no: int, n_fft: int, n_band: int, win_len: int,
+                                    amps: np.ndarray, freqs: np.ndarray, duration: float, sr: int) -> np.ndarray:
+    H: np.ndarray = np.zeros(n_fft)
+    for band in range(n_band):
+        H[freqs[band]:freqs[band+1]] = amps[note_no-lowest_note_no][band]
+    ks: np.ndarray = np.arange(1, n_fft//2)
+    H[n_fft-ks] = H[ks]
+    h: np.ndarray = np.real(np.fft.ifft(H, n_fft))
+    h = np.roll(h, -n_fft//2)
+    b: np.ndarray = hanning_window(win_len+1) * h[(n_fft-win_len)//2:(n_fft+win_len)//2+1]
+
+    u = np.zeros(int(duration*sr))
+    for i in range(int(duration*sr)):
+        for j in range(win_len+1):
+            if i - j >= 0:
+                u[i] += b[j] * z[i-j]
+    z = np.concatenate([u[:int(duration*sr)-win_len], np.zeros(win_len)])
+    return z
+
+def plucked_string_highpass_filter(z: np.ndarray, sr: int) -> np.ndarray:
+    z = biquad_filter(z, filter_type="highpass", fc=5, Q=1/np.sqrt(2), sr=sr)
+    z /= np.max(np.abs(z))
+    return z
+
+def plucked_string_attack_part(z: np.ndarray, freq: float, gate: float, duration: float, sr: int) -> np.ndarray:
+    vcfa: np.ndarray = 32 * freq \
+                     + 512 * freq * adsr(A=0, D=5/freq, S=0, R=5/freq, gate=gate, dur=duration, sr=sr)
+    vcfa = np.minimum(vcfa, 20000)
+    vcaa: np.ndarray = adsr(A=4/freq, D=20/freq, S=0, R=20/freq, gate=gate, dur=duration)
+    z: np.ndarray = vcaa * biquad_filter(z, filter_type="lowpass", fc=vcfa, Q=1/np.sqrt(2), sr=sr)
+    return z
+
+def plucked_string_sustain_part(z: np.ndarray, freq: float, fbk_decay: float, gate: float, duration: float, sr: int) -> np.ndarray:
+    vcfs: np.ndarray = 8 * freq \
+                     + 128 * freq * adsr(A=0, D=0.2*fbk_decay, S=0, R=0.2*fbk_decay, gate=gate, dur=duration, sr=sr)
+    vcfs = np.minimum(vcfs, 20000)
+    vcas: np.ndarray = adsr(A=4/freq, D=0, S=1, R=0, gate=duration, dur=duration, sr=sr)
+    z: np.ndarray = vcas * biquad_filter(z, filter_type="lowpass", fc=vcfs, Q=1/np.sqrt(2), sr=sr)
+    return z
+
+
+def harp(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
+    WIN_LEN: int = 128
+    freq: float = calc_freq(note_no)
+
+    # feedback filter
+    d: float = calc_delayar(note_no, p1=70, p2=0, p3=120/12, p4=0.5, is_sub=True)
+    fbk_decay: float = calc_delayar(note_no, p1=75, p2=0, p3=120/12, p4=20, is_sub=True)
+    c: float = np.minimum(np.power(10, -3/freq/fbk_decay)
+                          / np.sqrt((1 - d) ** 2 + 2 * d * (1 - d) * np.cos(2 * np.pi * freq / sr) + d ** 2),
+                          1)
+
+    # delayline
+    n_delay: int = int(sr / freq - d)
+    f_delay: float = sr / freq - d - n_delay
+    apf_coef: float = (1 - f_delay) / (1 + f_delay)
+
+    # Karplus-Strong string synthesis
+    pos: float = 0.5
+    z = plucked_string_karplus_strong(freq, n_delay, WIN_LEN, duration, sr)
+    z = plucked_string_delay_feedback(z, WIN_LEN, n_delay, apf_coef, c, d, duration, sr)
+    z = plucked_string_comb_filter(z, freq, pos, n_delay, duration, sr)
 
     # frequency filtering
     N_FFT: int = 4096
@@ -160,42 +208,12 @@ def harp(note_no: int, velocity: int, gate: float, duration: float, sr: int =441
         [1.000000, 0.996959, 0.989121, 0.975469, 0.958787, 0.935097, 0.903193, 0.865749, 0.818770, 0.761849, 0.700278, 0.630164, 0.553219, 0.477443, 0.400557, 0.326152, 0.258156, 0.199401, 0.151907, 0.115702, 0.090016, 0.072997, 0.062960, 0.058075, 0.057100, 0.057947, 0.057888, 0.054259, 0.046800, 0.038650, 0.032793, 0.030329, 0.030185, 0.029453, 0.026393, 0.022703, 0.020332, 0.017698, 0.013279, 0.009885, 0.009485, 0.009819, 0.008647, 0.008129, 0.007524, 0.006741, 0.008184, 0.005889, 0.004463, 0.006105, 0.005055, 0.003975, 0.005074, 0.004375, 0.004186, 0.003510, 0.002665, 0.002176, 0.001816, 0.000990, 0.000793, 0.000510, 0.000471, 0.000382],
         [1.000000, 0.995030, 0.982342, 0.960597, 0.934663, 0.899010, 0.852986, 0.801740, 0.741415, 0.673532, 0.605917, 0.535459, 0.464877, 0.401301, 0.341824, 0.288019, 0.241219, 0.201690, 0.169479, 0.143868, 0.124166, 0.109343, 0.098544, 0.090561, 0.084938, 0.080723, 0.076826, 0.072366, 0.066664, 0.059786, 0.052042, 0.044155, 0.037440, 0.032226, 0.028451, 0.025802, 0.023649, 0.021300, 0.018598, 0.016085, 0.014572, 0.014648, 0.016036, 0.017065, 0.015370, 0.011483, 0.008393, 0.007253, 0.007162, 0.006734, 0.006337, 0.007576, 0.009671, 0.008863, 0.006913, 0.006223, 0.005968, 0.008224, 0.008089, 0.003574, 0.003039, 0.001618, 0.001672, 0.001290]
     ])
+    z = plucked_string_frequency_filter(z, note_no, LOWEST_NOTE_NO, N_FFT, N_BAND, WIN_LEN, amps, freqs, duration, sr)
+    z = plucked_string_highpass_filter(z, sr)
 
-    H: np.ndarray = np.zeros(N_FFT)
-    for band in range(N_BAND):
-        H[freqs[band]:freqs[band+1]] = amps[note_no-LOWEST_NOTE_NO][band]
-    ks: np.ndarray = np.arange(1, N_FFT//2)
-    H[N_FFT-ks] = H[ks]
-    h: np.ndarray = np.real(np.fft.ifft(H, N_FFT))
-    h = np.roll(h, -N_FFT//2)
-    b: np.ndarray = hanning_window(WIN_LEN+1) * h[(N_FFT-WIN_LEN)//2:(N_FFT+WIN_LEN)//2+1]
-
-    u = np.zeros(int(duration*sr))
-    for i in range(int(duration*sr)):
-        for j in range(WIN_LEN+1):
-            if i - j >= 0:
-                u[i] += b[j] * z[i-j]
-    z = np.concatenate([u[:int(duration*sr)-WIN_LEN], np.zeros(WIN_LEN)])
-
-    # Highpass Filter
-    z = biquad_filter(z, filter_type="highpass", fc=5, Q=1/np.sqrt(2), sr=sr)
-    z /= np.max(np.abs(z))
-
-    # attack part
-    vcfa: np.ndarray = 32 * freq \
-                     + 512 * freq * adsr(A=0, D=5/freq, S=0, R=5/freq, gate=gate, dur=duration, sr=sr)
-    vcfa = np.minimum(vcfa, 20000)
-    vcaa: np.ndarray = adsr(A=4/freq, D=20/freq, S=0, R=20/freq, gate=gate, dur=duration)
-    za: np.ndarray = vcaa * biquad_filter(z, filter_type="lowpass", fc=vcfa, Q=1/np.sqrt(2), sr=sr)
-
-    # sustain part
-    vcfs: np.ndarray = 8 * freq \
-                     + 128 * freq * adsr(A=0, D=0.2*fbk_decay, S=0, R=0.2*fbk_decay, gate=gate, dur=duration, sr=sr)
-    vcfs = np.minimum(vcfs, 20000)
-    vcas: np.ndarray = adsr(A=4/freq, D=0, S=1, R=0, gate=duration, dur=duration, sr=sr)
-    zs: np.ndarray = vcas * biquad_filter(z, filter_type="lowpass", fc=vcfs, Q=1/np.sqrt(2), sr=sr)
-
-    # integrate
+    # parts
+    za: np.ndarray = plucked_string_attack_part(z, freq, gate, duration, sr)
+    zs: np.ndarray = plucked_string_sustain_part(z, freq, fbk_decay, gate, duration, sr)
     vca: np.ndarray = adsr(A=0, D=0, S=1, R=0.1, gate=gate, dur=duration, sr=sr)
     z = vca * (0.5 * za + 0.5 * zs)
     return (velocity / 127) / np.max(np.abs(z)) * z
