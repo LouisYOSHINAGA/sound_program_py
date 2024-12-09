@@ -63,8 +63,7 @@ def plucked_string_karplus_strong(freq: float, n_delay: int, win_len: int, durat
         z[:n_delay+1+win_len] += np.sin(
             2 * np.pi * freq * (i+1) * np.arange(n_delay+1+win_len) / sr + 2 * (np.random.default_rng().random() - 0.5) * np.pi
         )
-    z -= np.mean(z)
-    return z
+    return z - np.mean(z)
 
 def plucked_string_delay_feedback(z: np.ndarray, win_len: int, n_delay: int, apf_coef: float, c: float, d: float, duration: float, sr: int) -> np.ndarray:
     fdelays: np.ndarray = np.zeros(int(duration*sr))
@@ -109,20 +108,15 @@ def plucked_string_highpass_filter(z: np.ndarray, sr: int) -> np.ndarray:
     z /= np.max(np.abs(z))
     return z
 
-def plucked_string_attack_part(z: np.ndarray, freq: float, gate: float, duration: float, sr: int) -> np.ndarray:
-    vcfa: np.ndarray = 32 * freq \
-                     + 512 * freq * adsr(A=0, D=5/freq, S=0, R=5/freq, gate=gate, dur=duration, sr=sr)
-    vcfa = np.minimum(vcfa, 20000)
-    vcaa: np.ndarray = adsr(A=4/freq, D=20/freq, S=0, R=20/freq, gate=gate, dur=duration)
-    z: np.ndarray = vcaa * biquad_filter(z, filter_type="lowpass", fc=vcfa, Q=1/np.sqrt(2), sr=sr)
-    return z
-
-def plucked_string_sustain_part(z: np.ndarray, freq: float, fbk_decay: float, gate: float, duration: float, sr: int) -> np.ndarray:
-    vcfs: np.ndarray = 8 * freq \
-                     + 128 * freq * adsr(A=0, D=0.2*fbk_decay, S=0, R=0.2*fbk_decay, gate=gate, dur=duration, sr=sr)
-    vcfs = np.minimum(vcfs, 20000)
-    vcas: np.ndarray = adsr(A=4/freq, D=0, S=1, R=0, gate=duration, dur=duration, sr=sr)
-    z: np.ndarray = vcas * biquad_filter(z, filter_type="lowpass", fc=vcfs, Q=1/np.sqrt(2), sr=sr)
+def plucked_string_part(z: np.ndarray, p_vcf: dict[str, float], p_vca: dict[str, float], sr: int) -> np.ndarray:
+    vcf: np.ndarray = p_vcf["offset"] \
+                    + p_vcf["depth"] * adsr(A=p_vcf["A"], D=p_vcf["D"], S=p_vcf["S"], R=p_vcf["R"], \
+                                            gate=p_vcf['gate'], dur=p_vcf['dur'], sr=sr)
+    vcf = np.minimum(vcf, 20000)
+    vca: np.ndarray = p_vca["offset"] \
+                    + p_vca["depth"] * adsr(A=p_vca["A"], D=p_vca["D"], S=p_vca["S"], R=p_vca["R"], \
+                                            gate=p_vca['gate'], dur=p_vca['dur'], sr=sr)
+    z: np.ndarray = vca * biquad_filter(z, filter_type="lowpass", fc=vcf, Q=1/np.sqrt(2), sr=sr)
     return z
 
 
@@ -133,9 +127,10 @@ def harp(note_no: int, velocity: int, gate: float, duration: float, sr: int =441
     # feedback filter
     d: float = calc_delayar(note_no, p1=70, p2=0, p3=120/12, p4=0.5, is_sub=True)
     fbk_decay: float = calc_delayar(note_no, p1=75, p2=0, p3=120/12, p4=20, is_sub=True)
-    c: float = np.minimum(np.power(10, -3/freq/fbk_decay)
-                          / np.sqrt((1 - d) ** 2 + 2 * d * (1 - d) * np.cos(2 * np.pi * freq / sr) + d ** 2),
-                          1)
+    c: float = np.minimum(
+        np.power(10, -3/freq/fbk_decay) / np.sqrt((1 - d) ** 2 + 2 * d * (1 - d) * np.cos(2 * np.pi * freq / sr) + d ** 2),
+        1
+    )
 
     # delayline
     n_delay: int = int(sr / freq - d)
@@ -212,8 +207,18 @@ def harp(note_no: int, velocity: int, gate: float, duration: float, sr: int =441
     z = plucked_string_highpass_filter(z, sr)
 
     # parts
-    za: np.ndarray = plucked_string_attack_part(z, freq, gate, duration, sr)
-    zs: np.ndarray = plucked_string_sustain_part(z, freq, fbk_decay, gate, duration, sr)
+    p_vcf_a: dict[str, float] = {'A': 0, 'D': 5/freq, 'S': 0, 'R': 5/freq,
+                                 'gate': gate, 'dur': duration, 'offset': 32*freq, 'depth': 512*freq}
+    p_vca_a: dict[str, float] = {'A': 4/freq, 'D': 20/freq, 'S': 0, 'R': 20/freq,
+                                 'gate': gate, 'dur': duration, 'offset': 0, 'depth': 1}
+    za: np.ndarray = plucked_string_part(z, p_vcf_a, p_vca_a, sr)
+
+    p_vcf_s: dict[str, float] = {'A': 0, 'D': 0.2*fbk_decay, 'S': 0, 'R': 0.2*fbk_decay,
+                                 'gate': gate, 'dur': duration, 'offset': 8*freq, 'depth': 128*freq}
+    p_vca_s: dict[str, float] = {'A': 4/freq, 'D': 0, 'S': 1, 'R': 0,
+                                 'gate': duration, 'dur': duration, 'offset': 0, 'depth': 1}
+    zs: np.ndarray = plucked_string_part(z, p_vcf_s, p_vca_s, sr)
+
     vca: np.ndarray = adsr(A=0, D=0, S=1, R=0.1, gate=gate, dur=duration, sr=sr)
     z = vca * (0.5 * za + 0.5 * zs)
     return (velocity / 127) / np.max(np.abs(z)) * z
