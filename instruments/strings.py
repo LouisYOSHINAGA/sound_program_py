@@ -8,7 +8,7 @@ from window import hanning_window
 from instruments.utils import calc_freq, calc_delayar
 
 
-def abstract_string(note_no: int, velocity: int, gate: float, duration: float, f_lpf: float, f_hpf: float, sr: int) -> np.ndarray:
+def abstract_bow_string(note_no: int, velocity: int, gate: float, duration: float, f_lpf: float, f_hpf: float, sr: int) -> np.ndarray:
     freq: float = calc_freq(note_no)
     n_partial: int = int(np.clip(6000/freq, 5, 30))
 
@@ -33,35 +33,35 @@ def abstract_string(note_no: int, velocity: int, gate: float, duration: float, f
 
 
 def violin(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
-    return abstract_string(
+    return abstract_bow_string(
         note_no=note_no, velocity=velocity, gate=gate, duration=duration, f_lpf=2000, f_hpf=250, sr=sr
     )
 
 
 def viola(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
-    return abstract_string(
+    return abstract_bow_string(
         note_no=note_no, velocity=velocity, gate=gate, duration=duration, f_lpf=1400, f_hpf=200, sr=sr
     )
 
 
 def cello(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
-    return abstract_string(
+    return abstract_bow_string(
         note_no=note_no, velocity=velocity, gate=gate, duration=duration, f_lpf=900, f_hpf=150, sr=sr
     )
 
 
 def contrabass(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
-    return abstract_string(
+    return abstract_bow_string(
         note_no=note_no, velocity=velocity, gate=gate, duration=duration, f_lpf=500, f_hpf=100, sr=sr
     )
 
 
-def plucked_string_karplus_strong(freq: float, n_delay: int, win_len: int, duration: float, sr: int) -> np.ndarray:
+def plucked_string_excitation(freq: float, n: int, duration: float, sr: int) -> np.ndarray:
     z: np.ndarray = np.zeros(int(duration*sr))
     n_partial: int = int(20000 / freq)
     for i in range(n_partial):
-        z[:n_delay+1+win_len] += np.sin(
-            2 * np.pi * freq * (i+1) * np.arange(n_delay+1+win_len) / sr + 2 * (np.random.default_rng().random() - 0.5) * np.pi
+        z[:n+1] += np.sin(
+            2 * np.pi * freq * (i+1) * np.arange(n+1) / sr + 2 * (np.random.default_rng().random() - 0.5) * np.pi
         )
     return z - np.mean(z)
 
@@ -100,9 +100,7 @@ def plucked_string_frequency_filter(z: np.ndarray, note_no: int, lowest_note_no:
             if i - j >= 0:
                 u[i] += b[j] * z[i-j]
     z = np.concatenate([u[:int(duration*sr)-win_len], np.zeros(win_len)])
-    return z
 
-def plucked_string_highpass_filter(z: np.ndarray, sr: int) -> np.ndarray:
     z = biquad_filter(z, filter_type="highpass", fc=5, Q=1/np.sqrt(2), sr=sr)
     return z / np.max(np.abs(z))
 
@@ -137,7 +135,7 @@ def harp(note_no: int, velocity: int, gate: float, duration: float, sr: int =441
 
     # Karplus-Strong string synthesis
     pos: float = 0.5
-    z = plucked_string_karplus_strong(freq, n_delay, WIN_LEN, duration, sr)
+    z = plucked_string_excitation(freq, n_delay+WIN_LEN, duration, sr)
     z = plucked_string_delay_feedback(z, WIN_LEN, n_delay, apf_coef, c, d, duration, sr)
     z = plucked_string_comb_filter(z, freq, pos, n_delay, duration, sr)
 
@@ -145,15 +143,6 @@ def harp(note_no: int, velocity: int, gate: float, duration: float, sr: int =441
     N_FFT: int = 4096
     N_BAND: int = 64
     LOWEST_NOTE_NO: int = 23
-    freqs: np.ndarray = np.array([
-           0,    4,    7,   12,   16,   20,   25,   30,   35,   41,
-          47,   53,   60,   67,   74,   82,   90,   99,  108,  118,
-         128,  139,  150,  162,  175,  188,  202,  217,  233,  250,
-         267,  286,  306,  326,  348,  371,  396,  421,  449,  477,
-         508,  540,  574,  609,  647,  687,  729,  773,  820,  869,
-         922,  977, 1035, 1097, 1161, 1230, 1302, 1379, 1460, 1545,
-        1635, 1730, 1830, 1936, 2048
-    ])
     amps: np.ndarray = np.array([
         [0.060858, 0.188249, 0.632011, 1.000000, 0.850353, 0.347937, 0.157694, 0.140827, 0.192228, 0.357717, 0.079275, 0.074854, 0.036400, 0.065630, 0.064848, 0.044823, 0.079304, 0.057037, 0.030086, 0.030348, 0.071365, 0.028947, 0.014450, 0.023485, 0.021666, 0.020902, 0.022189, 0.024348, 0.016225, 0.019122, 0.035220, 0.006662, 0.013261, 0.018244, 0.005799, 0.010833, 0.011369, 0.008764, 0.007319, 0.005925, 0.009274, 0.005687, 0.003852, 0.003488, 0.004024, 0.003406, 0.003140, 0.002878, 0.001997, 0.002213, 0.002079, 0.001446, 0.001384, 0.000878, 0.000447, 0.000510, 0.000274, 0.000247, 0.000164, 0.000228, 0.000244, 0.000227, 0.000281, 0.000261],
         [0.060858, 0.188249, 0.632011, 1.000000, 0.850353, 0.347937, 0.157694, 0.140827, 0.192228, 0.357717, 0.079275, 0.074854, 0.036400, 0.065630, 0.064848, 0.044823, 0.079304, 0.057037, 0.030086, 0.030348, 0.071365, 0.028947, 0.014450, 0.023485, 0.021666, 0.020902, 0.022189, 0.024348, 0.016225, 0.019122, 0.035220, 0.006662, 0.013261, 0.018244, 0.005799, 0.010833, 0.011369, 0.008764, 0.007319, 0.005925, 0.009274, 0.005687, 0.003852, 0.003488, 0.004024, 0.003406, 0.003140, 0.002878, 0.001997, 0.002213, 0.002079, 0.001446, 0.001384, 0.000878, 0.000447, 0.000510, 0.000274, 0.000247, 0.000164, 0.000228, 0.000244, 0.000227, 0.000281, 0.000261],
@@ -201,8 +190,16 @@ def harp(note_no: int, velocity: int, gate: float, duration: float, sr: int =441
         [1.000000, 0.996959, 0.989121, 0.975469, 0.958787, 0.935097, 0.903193, 0.865749, 0.818770, 0.761849, 0.700278, 0.630164, 0.553219, 0.477443, 0.400557, 0.326152, 0.258156, 0.199401, 0.151907, 0.115702, 0.090016, 0.072997, 0.062960, 0.058075, 0.057100, 0.057947, 0.057888, 0.054259, 0.046800, 0.038650, 0.032793, 0.030329, 0.030185, 0.029453, 0.026393, 0.022703, 0.020332, 0.017698, 0.013279, 0.009885, 0.009485, 0.009819, 0.008647, 0.008129, 0.007524, 0.006741, 0.008184, 0.005889, 0.004463, 0.006105, 0.005055, 0.003975, 0.005074, 0.004375, 0.004186, 0.003510, 0.002665, 0.002176, 0.001816, 0.000990, 0.000793, 0.000510, 0.000471, 0.000382],
         [1.000000, 0.995030, 0.982342, 0.960597, 0.934663, 0.899010, 0.852986, 0.801740, 0.741415, 0.673532, 0.605917, 0.535459, 0.464877, 0.401301, 0.341824, 0.288019, 0.241219, 0.201690, 0.169479, 0.143868, 0.124166, 0.109343, 0.098544, 0.090561, 0.084938, 0.080723, 0.076826, 0.072366, 0.066664, 0.059786, 0.052042, 0.044155, 0.037440, 0.032226, 0.028451, 0.025802, 0.023649, 0.021300, 0.018598, 0.016085, 0.014572, 0.014648, 0.016036, 0.017065, 0.015370, 0.011483, 0.008393, 0.007253, 0.007162, 0.006734, 0.006337, 0.007576, 0.009671, 0.008863, 0.006913, 0.006223, 0.005968, 0.008224, 0.008089, 0.003574, 0.003039, 0.001618, 0.001672, 0.001290]
     ])
+    freqs: np.ndarray = np.array([
+           0,    4,    7,   12,   16,   20,   25,   30,   35,   41,
+          47,   53,   60,   67,   74,   82,   90,   99,  108,  118,
+         128,  139,  150,  162,  175,  188,  202,  217,  233,  250,
+         267,  286,  306,  326,  348,  371,  396,  421,  449,  477,
+         508,  540,  574,  609,  647,  687,  729,  773,  820,  869,
+         922,  977, 1035, 1097, 1161, 1230, 1302, 1379, 1460, 1545,
+        1635, 1730, 1830, 1936, 2048
+    ])
     z = plucked_string_frequency_filter(z, note_no, LOWEST_NOTE_NO, N_FFT, N_BAND, WIN_LEN, amps, freqs, duration, sr)
-    z = plucked_string_highpass_filter(z, sr)
 
     # parts
     p_vcf_a: dict[str, float] = {'A': 0, 'D': 5/freq, 'S': 0, 'R': 5/freq,
@@ -249,22 +246,13 @@ def acoustic_guitar(note_no: int, velocity: int, gate: float, duration: float, s
         0.60, 0.68, 0.68, 0.68, 0.81
     ])
     pos: float = excitation[note_no-LOWEST_NOTE_NO]
-    z = plucked_string_karplus_strong(freq, n_delay, WIN_LEN, duration, sr)
+    z = plucked_string_excitation(freq, n_delay+WIN_LEN, duration, sr)
     z = plucked_string_delay_feedback(z, WIN_LEN, n_delay, apf_coef, c, d, duration, sr)
     z = plucked_string_comb_filter(z, freq, pos, n_delay, duration, sr)
 
     # frequency filtering
     N_FFT: int = 4096
     N_BAND: int = 64
-    freqs: np.ndarray = np.array([
-           0,    4,    7,   12,   16,   20,   25,   30,   35,   41,
-          47,   53,   60,   67,   74,   82,   90,   99,  108,  118,
-         128,  139,  150,  162,  175,  188,  202,  217,  233,  250,
-         267,  286,  306,  326,  348,  371,  396,  421,  449,  477,
-         508,  540,  574,  609,  647,  687,  729,  773,  820,  869,
-         922,  977, 1035, 1097, 1161, 1230, 1302, 1379, 1460, 1545,
-        1635, 1730, 1830, 1936, 2048
-    ])
     amps: np.ndarray = np.array([
         [0.060858, 0.188249, 0.632011, 1.000000, 0.850353, 0.347937, 0.157694, 0.140827, 0.192228, 0.357717, 0.079275, 0.074854, 0.036400, 0.065630, 0.064848, 0.044823, 0.079304, 0.057037, 0.030086, 0.030348, 0.071365, 0.028947, 0.014450, 0.023485, 0.021666, 0.020902, 0.022189, 0.024348, 0.016225, 0.019122, 0.035220, 0.006662, 0.013261, 0.018244, 0.005799, 0.010833, 0.011369, 0.008764, 0.007319, 0.005925, 0.009274, 0.005687, 0.003852, 0.003488, 0.004024, 0.003406, 0.003140, 0.002878, 0.001997, 0.002213, 0.002079, 0.001446, 0.001384, 0.000878, 0.000447, 0.000510, 0.000274, 0.000247, 0.000164, 0.000228, 0.000244, 0.000227, 0.000281, 0.000261],
         [0.060858, 0.188249, 0.632011, 1.000000, 0.850353, 0.347937, 0.157694, 0.140827, 0.192228, 0.357717, 0.079275, 0.074854, 0.036400, 0.065630, 0.064848, 0.044823, 0.079304, 0.057037, 0.030086, 0.030348, 0.071365, 0.028947, 0.014450, 0.023485, 0.021666, 0.020902, 0.022189, 0.024348, 0.016225, 0.019122, 0.035220, 0.006662, 0.013261, 0.018244, 0.005799, 0.010833, 0.011369, 0.008764, 0.007319, 0.005925, 0.009274, 0.005687, 0.003852, 0.003488, 0.004024, 0.003406, 0.003140, 0.002878, 0.001997, 0.002213, 0.002079, 0.001446, 0.001384, 0.000878, 0.000447, 0.000510, 0.000274, 0.000247, 0.000164, 0.000228, 0.000244, 0.000227, 0.000281, 0.000261],
@@ -312,8 +300,16 @@ def acoustic_guitar(note_no: int, velocity: int, gate: float, duration: float, s
         [1.000000, 0.996959, 0.989121, 0.975469, 0.958787, 0.935097, 0.903193, 0.865749, 0.818770, 0.761849, 0.700278, 0.630164, 0.553219, 0.477443, 0.400557, 0.326152, 0.258156, 0.199401, 0.151907, 0.115702, 0.090016, 0.072997, 0.062960, 0.058075, 0.057100, 0.057947, 0.057888, 0.054259, 0.046800, 0.038650, 0.032793, 0.030329, 0.030185, 0.029453, 0.026393, 0.022703, 0.020332, 0.017698, 0.013279, 0.009885, 0.009485, 0.009819, 0.008647, 0.008129, 0.007524, 0.006741, 0.008184, 0.005889, 0.004463, 0.006105, 0.005055, 0.003975, 0.005074, 0.004375, 0.004186, 0.003510, 0.002665, 0.002176, 0.001816, 0.000990, 0.000793, 0.000510, 0.000471, 0.000382],
         [1.000000, 0.995030, 0.982342, 0.960597, 0.934663, 0.899010, 0.852986, 0.801740, 0.741415, 0.673532, 0.605917, 0.535459, 0.464877, 0.401301, 0.341824, 0.288019, 0.241219, 0.201690, 0.169479, 0.143868, 0.124166, 0.109343, 0.098544, 0.090561, 0.084938, 0.080723, 0.076826, 0.072366, 0.066664, 0.059786, 0.052042, 0.044155, 0.037440, 0.032226, 0.028451, 0.025802, 0.023649, 0.021300, 0.018598, 0.016085, 0.014572, 0.014648, 0.016036, 0.017065, 0.015370, 0.011483, 0.008393, 0.007253, 0.007162, 0.006734, 0.006337, 0.007576, 0.009671, 0.008863, 0.006913, 0.006223, 0.005968, 0.008224, 0.008089, 0.003574, 0.003039, 0.001618, 0.001672, 0.001290]
     ])
+    freqs: np.ndarray = np.array([
+           0,    4,    7,   12,   16,   20,   25,   30,   35,   41,
+          47,   53,   60,   67,   74,   82,   90,   99,  108,  118,
+         128,  139,  150,  162,  175,  188,  202,  217,  233,  250,
+         267,  286,  306,  326,  348,  371,  396,  421,  449,  477,
+         508,  540,  574,  609,  647,  687,  729,  773,  820,  869,
+         922,  977, 1035, 1097, 1161, 1230, 1302, 1379, 1460, 1545,
+        1635, 1730, 1830, 1936, 2048
+    ])
     z = plucked_string_frequency_filter(z, note_no, LOWEST_NOTE_NO, N_FFT, N_BAND, WIN_LEN, amps, freqs, duration, sr)
-    z = plucked_string_highpass_filter(z, sr)
 
     # parts
     p_vcf_a: dict[str, float] = {'A': 0, 'D': 5/freq, 'S': 0, 'R': 5/freq,
