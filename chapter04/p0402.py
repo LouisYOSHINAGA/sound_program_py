@@ -2,6 +2,8 @@ import sys
 sys.path.append("..")
 import numpy as np
 import midi as m
+from instruments.keys import pipe_organ
+from effect import reverb
 from wavio import write_wave_16bit
 
 
@@ -10,17 +12,6 @@ A4NOTE: int = 69
 FADEIN_SEC: float = 0.01
 TAIL_BLANK: float = 2.0
 
-
-def sine(noteno: int, velocity: int, sec: float, sr: int = 44100) -> np.ndarray:
-    ts: np.ndarray = np.arange(0, sec, 1/sr)
-    freq: float = A4FREQ * 2 ** ((noteno - A4NOTE) / 12)
-    sine: np.ndarray = np.sin(2 * np.pi * freq * ts)
-
-    fadein_sample: int = int(FADEIN_SEC * sr)
-    sine[:fadein_sample] *= np.arange(0, 1, 1/fadein_sample)
-    sine[-fadein_sample:] *= np.arange(1, 0, -1/fadein_sample)
-
-    return (velocity / 127) * sine
 
 def main(sr: int =44100) -> None:
     div, tempo, n_tracks, eot, score = m.decode("canon.mid", is_verbose=False)
@@ -36,11 +27,13 @@ def main(sr: int =44100) -> None:
         velocity: int = score[note, m.VELOCITY_IN_SCORE]
         sec: float = (score[note, m.GATE_IN_SCORE] / div) * (60 / bpm)
 
-        track[offset:offset+int(sec*sr), score[note, m.TRACK_IN_SCORE]] += sine(noteno, velocity, sec, sr)
+        track[offset:offset+int((sec+1)*sr), score[note, m.TRACK_IN_SCORE]] \
+            += pipe_organ(noteno, velocity, sec, sec+1, sr, enable_reverb=False)
+
     mvol: float = 0.5
-    y: np.ndarray = np.sum(track, axis=1)
+    y: np.ndarray = reverb(np.sum(track, axis=1), reverb_time=2, level=0.1, sr=sr)
     y *= mvol / np.max(np.abs(y))
-    write_wave_16bit(y, sr=sr, filename=f"p0401_output.wav", is_mono=True)
+    write_wave_16bit(y, sr=sr, filename=f"p0402_output.wav", is_mono=True)
 
 
 if __name__ == "__main__":
