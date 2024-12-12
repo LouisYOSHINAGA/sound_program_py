@@ -1,10 +1,11 @@
 import sys
 sys.path.append("..")
 import numpy as np
-from osc import noise
+from osc import square, noise
 from env import adsr
 from biquad import biquad_filter
 from window import hanning_window
+from effect import compressor
 from instruments.utils import calc_freq, calc_delayar
 from typing import Callable, Any
 
@@ -452,3 +453,13 @@ def electric_guitar(note_no: int, velocity: int, gate: float, duration: float, s
     if post_effect is not None:
         z = post_effect(z, sr=sr, **post_effect_kwargs)
     return z
+
+
+def electric_bass(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
+    vco: np.ndarray = square(np.full(int(duration*sr), calc_freq(note_no)), duty=0.125, sec=duration, sr=sr)
+    vco = biquad_filter(vco, filter_type="highpass", fc=5, Q=1/np.sqrt(2), sr=sr)
+    vcf: np.ndarray = 200 + 800 * adsr(A=0, D=0.2, S=0, R=0.2, gate=gate, dur=duration, sr=sr)
+    vca: np.ndarray = adsr(A=0.1, D=8, S=0, R=0.1, gate=gate, dur=duration, sr=sr)
+    z: np.ndarray = vca * biquad_filter(vco, filter_type="lowpass", fc=vcf, Q=1/np.sqrt(2), sr=sr)
+    z = compressor(z/np.max(np.abs(z)), threshold=0.5, width=0.4, ratio=8)
+    return (velocity / 127) / np.max(np.abs(z)) * z
