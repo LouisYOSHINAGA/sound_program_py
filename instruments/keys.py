@@ -328,3 +328,31 @@ def acoustic_piano(note_no: int, velocity: int, gate: float, duration: float, sr
     vca: np.ndarray = adsr(A=0, D=0, S=1, R=0.1, gate=gate, dur=duration, sr=sr)
     z = vca * (0.5 * za + 0.5 * zs)
     return (velocity / 127) / np.max(np.abs(z)) * z
+
+
+def electric_piano(note_no: int, velocity: int, gate: float, duration: float, sr: int =44100) -> np.ndarray:
+    freq: float = calc_freq(note_no)
+
+    # attack part
+    vco_mod_a: np.ndarray = 14 * freq * np.ones(int(duration*sr))
+    vca_mod_a: np.ndarray = adsr(A=0, D=1, S=0, R=1, gate=gate, dur=duration, sr=sr)
+    vco_car_a: np.ndarray = freq * np.ones(int(duration*sr))
+    vca_car_a: np.ndarray = adsr(A=0, D=1, S=0, R=0.1, gate=gate, dur=duration, sr=sr)
+
+    mod_a: np.ndarray = vca_mod_a * sine(fs=vco_mod_a, sr=sr, sec=duration)
+    phases_a: np.ndarray = np.cumsum(np.concatenate([np.zeros(1), vco_car_a[:-1]/sr], axis=-1), axis=-1) % 1
+    za: np.ndarray = vca_car_a * np.sin(2 * np.pi * phases_a + mod_a)
+
+    # sustain part
+    vco_mod_s: np.ndarray = freq * np.ones(int(duration*sr))
+    vca_mod_s: np.ndarray = adsr(A=0, D=2, S=0, R=2, gate=gate, dur=duration, sr=sr)
+    vco_car_s: np.ndarray = freq * np.ones(int(duration*sr))
+    vca_car_s: np.ndarray = adsr(A=0, D=4, S=0, R=0.1, gate=gate, dur=duration, sr=sr)
+
+    mod_s: np.ndarray = vca_mod_s * sine(fs=vco_mod_s, sr=sr, sec=duration)
+    phases_s: np.ndarray = np.cumsum(np.concatenate([np.zeros(1), vco_car_s[:-1]/sr], axis=-1), axis=-1) % 1
+    zs: np.ndarray = vca_car_s * np.sin(2 * np.pi * phases_s + mod_s)
+
+    # integrate
+    z: np.ndarray = 0.5 * za + 0.5 * zs
+    return (velocity / 127) / np.max(np.abs(z)) * z
